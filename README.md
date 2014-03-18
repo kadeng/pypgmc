@@ -1,5 +1,4 @@
-
-# PyPGMc Package
+# PyPGMc
 
 PyPGMc will provide a PyMC2 and PyMC3 compatible implementation of message passing based inference
 algorithms for probabilistic graphical models (PGM).
