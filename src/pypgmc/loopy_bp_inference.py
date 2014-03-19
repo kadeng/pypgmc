@@ -17,6 +17,8 @@ import theano.tensor as T
 from expression_utils import add_op, mul_op
 
 
+
+
 class LoopyBPInference(object):
 
 
@@ -146,6 +148,7 @@ class LoopyBPInference(object):
         self.initialized = False
 
     def alloc_resources(self):
+        ''' Allocate shared resources for computation'''
         self.shared_messages = SharedMessagePotentials(self.clique_scopes, self.discrete_pgm)
         self.initial_potentials = []
         import sys
@@ -171,7 +174,6 @@ class LoopyBPInference(object):
         self.pass_message_functions = self._create_pass_message_functions(inputs, kwargs)
 
     def reset(self, inputs):
-
         self._reset(inputs)
 
     def pass_message(self, from_idx, to_idx, algo='sum_product'):
@@ -348,6 +350,59 @@ class LoopyBPInference(object):
 
         return message
 
+    def _current_clique_potential(self, clique_idx, algo='sum_product'):
+        ''' Calculate theano expression for a single clique, which incorporates
+            all incoming messages using sum_product, max_product or min_product algorithms
+
+            Args:
+                clique_idx index of  clique
+                algo: May be either 'sum_product', 'max_product' or 'min_product'
+
+            Returns:
+                Theano expression of the clique's potential
+
+            '''
+        if (algo not in ['sum_product', 'max_product', 'min_product']):
+            raise Exception("Invalid argument '%s' for algo parameter" % (algo))
+
+        init_potential = self.initial_potentials[clique_idx]
+
+        # We should cache this for repeated calls
+        incoming_message_indices = np.nonzero(self.clique_edges[:,clique_idx])[0]
+
+        scope = self.clique_scopes[clique_idx]
+        assert len(scope)>0
+        pot = init_potential
+
+        for idx in incoming_message_indices:
+            if (idx==clique_idx):
+                continue # Never pass a message back on itself.
+            pot = self.op(pot, self.shared_messages.get_message_potential(idx, clique_idx))
+            if (algo=='sum_product'):
+                if (self.logspace):
+                    pot = pot.logsumexp_marginalize(pot.scope - scope)
+                else:
+                    pot = pot.marginalize(pot.scope - scope)
+            if (algo=='max_product'):
+                pot = pot.max_marginalize(pot.scope - scope)
+            if (algo=='min_product'):
+                pot = pot.min_marginalize(pot.scope - scope)
+
+        return pot
+
+    def _current_potentials(self, algo):
+        ''' Return a list of PotentialTables containing symbolic tensor representations of the current
+            clique potentials, which incorporate information from all incoming messages to the cliques.
+            If the message passing has been run to convergence, potentials should agree on marginals
+            and can be used for most relevant queries.
+            Args:
+                algo: May be either 'sum_product', 'max_product' or 'min_product'
+            Returns:
+                list of potential tables containing symbolic theano tensors representing the current cliques
+            '''
+        current_potentials = [self._current_clique_potential(ci, algo) for ci in range(len(self.clique_scopes))]
+        return current_potentials
+
     def probability(self, factors):
         '''Return a symbolic theano expression for the joint marginal probability of all given factors
            Args:
@@ -376,7 +431,7 @@ class LoopyBPInference(object):
         ''' Implementation for probability and logp functions respectively'''
 
         # Get Calibrated Potentials
-        calibrated = self.calibrated_potentials(factors, 'sum_product')
+        calibrated = self._current_potentials('sum_product')
         minlen = 9999999999
         mint = None
         # Find a clique with minimal scope, so we minimize the amount of final summing
@@ -398,6 +453,7 @@ class LoopyBPInference(object):
             if (as_logp):
                 res = T.log(res)
         return res
+
 
 
 class SharedMessagePotentials(object):
@@ -554,5 +610,56 @@ class SharedMessagePotentials(object):
         return fun
 
 
+def simple_message_scheduler(loopy, input, threshold=0.001, verbose=True, max_iters=20, algo='sum_product', message_list=None):
+    ''' Simple message scheduling algorithm for Loopy Belief Propagation.
+        May be replaced using custom code by LoopyBPInference.setMessageScheduler(function)
 
+        This scheduler expects a LoopyBPInference object that's ready to pass messages.
+        i.e. the following methods should have been called earlier:
+            * loopy.alloc_resources() to allocate shared resources
+            * loopy.set_factors(..) to set the factors and create appropriate messaging and reset functions
 
+        Args:
+            loopy: Instance of LoopyBPInference to use
+            input: Inputs required to create initial potentials, i.e. which are passed to loopy.reset(..)
+            threshold: Stop iterating if we don't get more thatn threshold change in summed message changes from one set of iterations to another.
+            algo: Must be 'sum_product', 'max_product' or 'min_product'
+
+        '''
+    if (message_list is None):
+        message_list = loopy.calc_a_message_order()
+
+    sum_changes = threshold + 1.0
+    last_sum_changes = sum_changes*2.0
+    iter = 0
+    import sys.stdout as stdout
+
+    def log_none(msg):
+        pass
+
+    def log_verbose(msg):
+        print msg
+        stdout.flush()
+
+    if (verbose):
+        log = log_verbose
+    else:
+        log = log_none
+
+    log("Resetting Loopy Belief Propagation Inference")
+    loopy.reset(input)
+    while ((last_sum_changes-sum_changes)>threshold):
+        if (iter>=max_iters):
+            log("Reached maximum number of iterations (%d)" % iter)
+            break
+        iter += 1
+        last_sum_changes = sum_changes
+        sum_changes = 0.0
+        for (from_idx, to_idx) in message_list:
+
+            res = loopy.pass_message(from_idx, to_idx, algo)
+            log("\t\tMessage %d -> %d - result: %r" % (from_idx, to_idx, res))
+            sum_changes += res
+        log("  Iteration %d: Summed changes: %f, difference: %f " %  (iter, sum_changes, last_sum_changes-sum_changes))
+
+    result_potentials =
