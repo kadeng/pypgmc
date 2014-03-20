@@ -282,7 +282,7 @@ class CliqueTreeInference(object):
                 break
             for src_clique in next_cliques:
                 target_cliques = np.nonzero(unmessaged[:,src_clique])[0] # Find index of the one unmessaged neighbour
-                if (not target_cliques):
+                if (len(target_cliques)==0):
                     break # This happens when this is the last clique remaining
                 target_clique = target_cliques[0]
                 message_ordering.append((src_clique, target_clique))

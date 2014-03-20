@@ -557,14 +557,62 @@ def test_shared_message_potentials():
     finally:
         theano.config.compute_test_value = ctv_backup
 
+def test_loopy_bp_1():
+    ctv_backup = theano.config.compute_test_value
+    theano.config.compute_test_value = 'off'
+    try:
+        dmodel = DiscretePGM([2,2,2,2],["a","b","c", "d"])
+        factors = []
+        logfactors = []
+        with dmodel:
+            va = np.random.random(size=[2,2]) + 0.001
+            vb = np.random.random(size=[2]) + 0.001
+            vc = np.random.random(size=[2,2]) + 0.001
+            vd = np.random.random(size=[2,2]) + 0.001
+
+            vas = theano.shared(va)
+            vbs = theano.shared(vb)
+            vcs = theano.shared(vc)
+            vds = theano.shared(vd)
+
+            c_evidence = PotentialTable(["c"], name="E(c)")
+
+            factors.append(PotentialTable(["a","b"],vas,  name="P(a|b)").normalize("a", inplace=False))
+            factors.append(PotentialTable(["b"],vbs, name="P(b)").normalize("b", inplace=False))
+            factors.append(PotentialTable(["c","b"], vcs, name="P(c|b)").normalize("c", inplace=False))
+            factors.append(PotentialTable(["d", "c"], vds, name="P(d|c)").normalize("d", inplace=False))
+            factors.append(c_evidence)
+
+            logfactors = [f.to_logspace(inplace=False) for f in factors]
+
+            ctree = CliqueTreeInference(logfactors, None, True)
+
+            probexpr = ctree.probability(logfactors)
+            probfunc = theano.function([c_evidence.pt_tensor], probexpr)
+
+            evidence = np.ones((2), dtype=theano.config.floatX)
+
+            inputs = [va, vb, vc, vd, evidence]
+            loopy = LoopyBPInference(logfactors, None, True)
+            loopy.alloc_resources()
+            loopy.set_factors(logfactors, logfactors)
+            loopy.inference(verbose=True, max_iters=10, threshold=0.000001, input=inputs)
+
+            return "OK"
+    finally:
+        theano.config.compute_test_value = ctv_backup
+
+
 if __name__ == '__main__':
-    print "Testing Potential Table Class .. "
-    print test_potential_tables()
-    print "Testing Clique Tree Creation .. "
-    print test_clique_tree_creation()
-    print "Testing clique tree calibration"
-    print test_clique_tree_calibration()
-    print "Testing clique tree calibration in log space"
-    print test_log_clique_tree_calibration()
-    print "Testing SharedMessagePotentials class"
-    test_shared_message_potentials()
+    #print "Testing Potential Table Class .. "
+    #print test_potential_tables()
+    #print "Testing Clique Tree Creation .. "
+    #print test_clique_tree_creation()
+    #print "Testing clique tree calibration"
+    #print test_clique_tree_calibration()
+    #print "Testing clique tree calibration in log space"
+    #print test_log_clique_tree_calibration()
+    #print "Testing SharedMessagePotentials class"
+    #print test_shared_message_potentials()
+    print "Testing Loopy BP - 1"
+    print test_loopy_bp_1()

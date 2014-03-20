@@ -16,8 +16,57 @@ import theano.tensor as T
 
 from expression_utils import add_op, mul_op
 
+def simple_message_scheduler(loopy, input, threshold=0.001, verbose=True, max_iters=20, algo='sum_product', message_list=None):
+    ''' Simple message scheduling algorithm for Loopy Belief Propagation.
+        May be replaced using custom code by LoopyBPInference.setMessageScheduler(function)
 
+        This scheduler expects a LoopyBPInference object that's ready to pass messages.
+        i.e. the following methods should have been called earlier:
+            * loopy.alloc_resources() to allocate shared resources
+            * loopy.set_factors(..) to set the factors and create appropriate messaging and reset functions
 
+        Args:
+            loopy: Instance of LoopyBPInference to use
+            input: Inputs required to create initial potentials, i.e. which are passed to loopy.reset(..)
+            threshold: Stop iterating if we don't get more thatn threshold change in summed message changes from one set of iterations to another.
+            algo: Must be 'sum_product', 'max_product' or 'min_product'
+
+        '''
+    if (message_list is None):
+        message_list = loopy.calc_a_message_order()
+
+    sum_changes = threshold + 1.0
+    last_sum_changes = sum_changes*2.0
+    iter = 0
+    from sys import stdout
+
+    def log_none(msg):
+        pass
+
+    def log_verbose(msg):
+        print msg
+        stdout.flush()
+
+    if (verbose):
+        log = log_verbose
+    else:
+        log = log_none
+
+    log("Resetting Loopy Belief Propagation Inference")
+    loopy.reset(input)
+    while ((last_sum_changes-sum_changes)>threshold):
+        if (iter>=max_iters):
+            log("Reached maximum number of iterations (%d)" % iter)
+            break
+        iter += 1
+        last_sum_changes = sum_changes
+        sum_changes = 0.0
+        for (from_idx, to_idx) in message_list:
+
+            res = loopy.pass_message(from_idx, to_idx, algo)
+            log("\t\tMessage %d -> %d - result: %r" % (from_idx, to_idx, res))
+            sum_changes += res
+        log("  Iteration %d: Summed changes: %f, difference: %f " %  (iter, sum_changes, last_sum_changes-sum_changes))
 
 class LoopyBPInference(object):
 
@@ -153,7 +202,6 @@ class LoopyBPInference(object):
         self.initial_potentials = []
         import sys
         for i, scope in enumerate(self.clique_scopes):
-            print "Scope %d: %r" % (i, scope)
             sys.stdout.flush()
             self.initial_potentials.append(PotentialTable(scope, 'shared', self.discrete_pgm, 'IP_%d' % i))
         self.initial_potential_expressions = None
@@ -168,27 +216,34 @@ class LoopyBPInference(object):
          '''
         if (not self.initialized):
             raise "Call alloc_resources first"
+        pinputs = list(inputs)
+        for i, v in enumerate(inputs):
+            if (isinstance(v, PotentialTable)):
+                pinputs[i] = v.pt_tensor
+        self.pass_message_functions = {}
         self.initial_potential_expressions = self._create_initial_potential_expressions(factor_potentials)
-        self._reset = self.reset_function(inputs, **kwargs)
+        self._reset = self._create_reset_function(pinputs, **kwargs)
         self.compile_kwargs = kwargs
-        self.pass_message_functions = self._create_pass_message_functions(inputs, kwargs)
+
+    def inference(self, input, threshold=0.001, verbose=True, max_iters=20, algo='sum_product', message_list=None, scheduler=simple_message_scheduler):
+        scheduler(self, input, threshold, verbose, max_iters, algo, message_list)
 
     def reset(self, inputs):
-        self._reset(inputs)
+        self._reset(*inputs)
 
     def pass_message(self, from_idx, to_idx, algo='sum_product'):
         ''' Pass a single message from clique from_idx to clique to_idx
             Should be used iteratively after a call to reset(...)
         '''
-        if (algo not in self.message_functions):
-            self._create_pass_message_functions( algo, self.compile_kwargs)
+        if (algo not in self.pass_message_functions):
+            self.pass_message_functions[algo] = self._create_pass_message_functions( algo, self.compile_kwargs)
         return self.pass_message_functions[algo][from_idx][to_idx]()
 
     def _create_pass_message_functions(self, algo, kwargs):
         result = []
-        for i in range(self.clique_scopes.shape[0]):
+        for i in range(self.clique_edges.shape[0]):
             row = []
-            for j in range(self.clique_scopes.shape[0]):
+            for j in range(self.clique_edges.shape[1]):
                 if (self.clique_edges[i,j]==0):
                     row.append(None)
                 else:
@@ -209,10 +264,13 @@ class LoopyBPInference(object):
             '''
         assert self.initial_potential_expressions is not None
         assert len(self.initial_potential_expressions)==len(self.initial_potentials)
-        update_list = list(zip(self.initial_potentials,self.initial_potential_expressions))
-        reset_messages = self.shared_messages.reset(self.neutral)
-        update_list.append(reset_messages)
-        return theano.function(input, [], updates=update_list, on_unused_input='ignore', **kwargs)
+        update_list = list(zip([p.pt_tensor for p in self.initial_potentials],[p.pt_tensor for p in self.initial_potential_expressions]))
+        nfloat = 1.0
+        if (self.neutral=='zeros'):
+            nfloat = 0.0
+        reset_messages = self.shared_messages.reset(nfloat)
+        update_list.append((self.shared_messages.message_mem, reset_messages))
+        return theano.function(input, [], updates=update_list, on_unused_input='ignore', mode='DebugMode', **kwargs)
 
     def get_mem_usage(self, float_size=8):
         ''' Estimate memory usage when calibrating an entire tree.
@@ -293,7 +351,7 @@ class LoopyBPInference(object):
                 break
             for src_clique in next_cliques:
                 target_cliques = np.nonzero(unmessaged[:,src_clique])[0] # Find index of the one unmessaged neighbour
-                if (not target_cliques):
+                if (len(target_cliques)<1):
                     break # This happens when this is the last clique remaining
                 target_clique = target_cliques[0]
                 message_ordering.append((src_clique, target_clique))
@@ -305,8 +363,8 @@ class LoopyBPInference(object):
         res = list(message_ordering) + list(reversed(reverse_messages))
         return res
 
-    def _create_pass_message_fn(self, src_idx, target_idx, inputs=[], algo='sum_product', kwargs={}):
-        return self.shared_messages.set_message_function(src_idx, target_idx, self.single_message_expr(src_idx, target_idx, algo), input, True, **kwargs)
+    def _create_pass_message_fn(self, src_idx, target_idx, algo='sum_product', kwargs={}):
+        return self.shared_messages.set_message_function(src_idx, target_idx, self._single_message_expr(src_idx, target_idx, algo), [], True, **kwargs)
 
     def _single_message_expr(self, src_idx, target_idx, algo='sum_product'):
         ''' Calculate theano expression for a single message from a clique to another
@@ -602,7 +660,7 @@ class SharedMessagePotentials(object):
             d1 = self.get_message_potential(from_idx, to_idx, self.message_mem)
             d2 = self.get_message_potential(from_idx, to_idx, op)
 
-            change = d1-d2
+            change = d1.pt_tensor-d2.pt_tensor
             diffsum = T.sum(change.flatten())
             fun = theano.function(input, diffsum, updates=[(self.message_mem, op)], on_unused_input='ignore', **enargs)
         else:
@@ -610,56 +668,4 @@ class SharedMessagePotentials(object):
         return fun
 
 
-def simple_message_scheduler(loopy, input, threshold=0.001, verbose=True, max_iters=20, algo='sum_product', message_list=None):
-    ''' Simple message scheduling algorithm for Loopy Belief Propagation.
-        May be replaced using custom code by LoopyBPInference.setMessageScheduler(function)
 
-        This scheduler expects a LoopyBPInference object that's ready to pass messages.
-        i.e. the following methods should have been called earlier:
-            * loopy.alloc_resources() to allocate shared resources
-            * loopy.set_factors(..) to set the factors and create appropriate messaging and reset functions
-
-        Args:
-            loopy: Instance of LoopyBPInference to use
-            input: Inputs required to create initial potentials, i.e. which are passed to loopy.reset(..)
-            threshold: Stop iterating if we don't get more thatn threshold change in summed message changes from one set of iterations to another.
-            algo: Must be 'sum_product', 'max_product' or 'min_product'
-
-        '''
-    if (message_list is None):
-        message_list = loopy.calc_a_message_order()
-
-    sum_changes = threshold + 1.0
-    last_sum_changes = sum_changes*2.0
-    iter = 0
-    import sys.stdout as stdout
-
-    def log_none(msg):
-        pass
-
-    def log_verbose(msg):
-        print msg
-        stdout.flush()
-
-    if (verbose):
-        log = log_verbose
-    else:
-        log = log_none
-
-    log("Resetting Loopy Belief Propagation Inference")
-    loopy.reset(input)
-    while ((last_sum_changes-sum_changes)>threshold):
-        if (iter>=max_iters):
-            log("Reached maximum number of iterations (%d)" % iter)
-            break
-        iter += 1
-        last_sum_changes = sum_changes
-        sum_changes = 0.0
-        for (from_idx, to_idx) in message_list:
-
-            res = loopy.pass_message(from_idx, to_idx, algo)
-            log("\t\tMessage %d -> %d - result: %r" % (from_idx, to_idx, res))
-            sum_changes += res
-        log("  Iteration %d: Summed changes: %f, difference: %f " %  (iter, sum_changes, last_sum_changes-sum_changes))
-
-    result_potentials =
