@@ -1,4 +1,3 @@
-
 '''
 
 @author: Kai Londenberg
@@ -302,7 +301,7 @@ def compact_shape(ndarr, var_set, discrete_pgm=None):
         return np.reshape(ndarr, [discrete_pgm.cardinalities[i] for i in sorted(scope)])
 
 def expand_shape(ndarr, var_set, discrete_pgm=None):
-        ''' Helper function: Create ndarray in compact format from ndarray in expanded format'''
+        ''' Helper function: Create ndarray in expanded format from ndarray in compact format'''
         if (discrete_pgm is None):
             discrete_pgm = DiscretePGM.get_context()
         if (discrete_pgm is None):
