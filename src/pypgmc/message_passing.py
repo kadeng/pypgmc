@@ -180,14 +180,18 @@ class MessagePassingGraph(object):
 
     
 class _MPState(object):
-    ''' Internal class which represents the iterative state of multiple Message Passing iterations given a single input
+    ''' Internal class which represents the state of a Message Passing operation given a single set of input factors.
+        May be used to construct various message passing and iteration schemes, from closed form exact solutions (CliqueTree)
+        to iterative (LoopyBP) ones. 
+        
+        Works completely symbolically by working with PotentialTable instances.
+        
     ''' 
-    
     def __init__(self, mpgraph, factors, algo='sum_product', message_order=None):
-        ''' Construcot of the _LoopyBPState object.
+        ''' Construcot of the _MPState object.
         
         Args:
-            mpgraph: Message Passing Graph. Usually a LoopyBPInference instance
+            mpgraph: MessagePassingGraph instance to construct clique graph for.
             factors: Factors, including possible evidence factors, which form the initial potentials
             algo: Algorithm. May be either 'sum_product', 'max_product' or 'min_product'
             message_order: Default messaging order (list of (src, target) tuples to use in pass_messages
@@ -260,7 +264,10 @@ class _MPState(object):
         return result
 
 def create_loopy_graph(self):
-        ''' Create a potentially loopy message passing graph'''
+        ''' Create a potentially loopy message passing graph
+        Create the junction tree, i.e. determine the cliques and their messaging scheme. 
+        Function that is intended to be passed to the MessagePassingGraph constructor and used as a method
+        '''
 
         factor_scopes = set(self.factor_scopes)
         ' Set of frozensets containing the scopes (frozenset of  var indices) of all factors - this set is being modified a lot during this algorithm'
@@ -331,7 +338,8 @@ def create_loopy_graph(self):
         self.initialized = False
         
 def create_clique_tree_graph(self):
-        ''' Create the junction tree, i.e. determine the cliques and their messaging scheme'''
+        ''' Create the junction tree, i.e. determine the cliques and their messaging scheme. 
+        Function that is intended to be passed to the MessagePassingGraph constructor and used as a method'''
 
         factor_scopes = set(self.factor_scopes)
         ' Set of frozensets containing the scopes (frozenset of  var indices) of all factors - this set is being modified a lot during this algorithm'
@@ -439,8 +447,8 @@ def create_clique_tree_graph(self):
             for i in range(numvars):
                 score = scores[i]
                 if (score > 0 and score < best_score):
-                      best_score = score
-                      best_elimination_var = i
+                    best_score = score
+                    best_elimination_var = i
             if (best_elimination_var!=-1):
                 clique_connected, factor_scopes, clique_scopes, eliminated_vars, clique_edges, var_edges = eliminate_var(best_elimination_var, var_edges, clique_connected, factor_scopes, clique_scopes, eliminated_vars, clique_edges)
 
@@ -454,3 +462,4 @@ def create_clique_tree_graph(self):
         self.clique_scopes = clique_scopes
         self.clique_edges = clique_edges
         self.elimination_order = eliminated_vars
+        
