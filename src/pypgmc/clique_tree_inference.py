@@ -311,9 +311,8 @@ class CliqueTreeInference(object):
             '''
         if (algo not in ['sum_product', 'max_product', 'min_product']):
             raise Exception("Invalid argument '%s' for algo parameter" % (algo))
-        messages = [None]*len(self.clique_scopes)
-        for c1 in range(len(self.clique_scopes)):
-            messages[c1] = [None]*len(self.clique_scopes)
+        messages = {}
+        
         initial_potentials = self._create_initial_potentials(factors)
         message_order = self._calc_message_order()
 
@@ -323,18 +322,18 @@ class CliqueTreeInference(object):
             nz = np.nonzero(messaged[:,src])[0]
             relevant_messages = set([int(z) for z in nz])-set([target])
             for mi in relevant_messages:
-                potential = self.op(potential, messages[mi][src])
+                potential = self.op(potential, messages[(mi,src)])
             message_scope = self.clique_scopes[src] & self.clique_scopes[target]
 
             if (algo=='sum_product'):
                 if (self.logspace):
-                    messages[src][target] = potential.logsumexp_marginalize(potential.scope - message_scope)
+                    messages[(src,target)] = potential.logsumexp_marginalize(potential.scope - message_scope)
                 else:
-                    messages[src][target] = potential.marginalize(potential.scope - message_scope)
+                    messages[(src, target)] = potential.marginalize(potential.scope - message_scope)
             if (algo=='max_product'):
-                messages[src][target] = potential.max_marginalize(potential.scope - message_scope)
+                messages[(src,target)] = potential.max_marginalize(potential.scope - message_scope)
             if (algo=='min_product'):
-                messages[src][target] = potential.min_marginalize(potential.scope - message_scope)
+                messages[(src,target)] = potential.min_marginalize(potential.scope - message_scope)
             messaged[src,target] = 1
         assert np.all(messaged==self.clique_edges)
         calibrated_potentials = []
@@ -343,7 +342,7 @@ class CliqueTreeInference(object):
 
             potential = initial_potentials[c]
             for i in incoming_messages:
-                potential = self.op(potential, messages[i][c])
+                potential = self.op(potential, messages[(i,c)])
             calibrated_potentials.append(potential)
         return calibrated_potentials
 
@@ -397,3 +396,364 @@ class CliqueTreeInference(object):
             if (as_logp):
                 res = T.log(res)
         return res
+    
+    
+class LoopyBeliefPropagationInference(object):
+
+
+    def __init__(self, factor_scopes=[], discrete_pgm=None, logspace=False):
+        """ Construct CliqueTreeInference object from set of factor scopes
+        Args:
+            factor_scopes(list(scopes)): List of variable scopes (given by name or variable index) or PotentialTable scopes.
+                                        in the latter case, scopes from these PotentialTables will be taken.
+            discrete_pgm(DiscretePGM): DiscretePGM model we are working in. May be null if we are "with" in that model's context
+
+            logspace: Whether to operate in log-space (in these case factor are added instead of multiplies, and we need to do logsumexp operations instead
+                     of simple summing when marginalizing
+
+        Returns:
+            A new CliqueTreeInference object configured to work with these
+        """
+        if (discrete_pgm is None):
+            discrete_pgm = DiscretePGM.get_context()
+        if (discrete_pgm is None):
+            raise Exception("No DiscretePGM specified, neither explicit nor as current context")
+        self.discrete_pgm = discrete_pgm
+        self.logspace = logspace
+        if (logspace):
+            self.pop = 'add'
+        else:
+            self.pop = 'multiply'
+
+        if (not logspace):
+            self.op = mul_op
+            self.neutral = 'ones'
+        else:
+            self.op = add_op
+            self.neutral = 'zeros'
+
+        fscopes = []
+        for f in factor_scopes:
+            if (isinstance(f, PotentialTable)):
+                fscopes.append(f.scope)
+            else:
+                fscopes.append(self.discrete_pgm.map_var_set(f))
+        factor_scopes = set(fscopes)
+        for fac in fscopes:
+            contained = False
+            for es in fscopes:
+                if fac.issubset(es):
+                    contained = True
+                    break
+                if es.issubset(fac):
+                    if (es in factor_scopes):
+                        factor_scopes.remove(es)
+            if (not contained):
+                factor_scopes.add(fac)
+
+        self.factor_scopes = frozenset(factor_scopes)
+        self._create_cliques()
+
+
+    def _create_graph(self):
+        ''' Create the message passing graph'''
+
+        factor_scopes = set(self.factor_scopes)
+        ' Set of frozensets containing the scopes (frozenset of  var indices) of all factors - this set is being modified a lot during this algorithm'
+
+        var_edges = np.zeros((self.discrete_pgm.numvars,self.discrete_pgm.numvars), dtype=np.int8)
+        'Adjacency Matrix of the variables'
+
+        clique_scopes = [frozenset(v) for v in factor_scopes]
+        'List of frozensets containing variable scopes (frozenset of var indices) of the cliques'
+
+        clique_edges = np.zeros((self.discrete_pgm.numvars,self.discrete_pgm.numvars), dtype=np.int8)
+        'Adjacency matrix of the cliques - we make this matrix as large as possibly needed'
+
+        for c1 in range(len(clique_scopes)):
+            for c2 in range(len(clique_scopes)):
+                if (c1==c2):
+                    continue
+                if (clique_scopes[c1] & clique_scopes[c2]):
+                    clique_edges[c1, c2] = 1
+
+        for scp in factor_scopes:
+            for v1 in scp:
+                for v2 in scp:
+                    var_edges[v1,v2] = 1
+
+        def prune_tree(clique_scopes, clique_edges):
+            ''' Eliminate unneccessary cliques by joining them with neighbours if possible'''
+            removed_clique_indices=set()
+            while True:
+                modified = False
+                for i1 in range(len(clique_scopes)):
+                    if (i1 in removed_clique_indices):
+                        continue
+                    c1 = clique_scopes[i1]
+
+                    for i2 in  range(len(clique_scopes)):
+                        if (i1==i2):
+                            continue
+                        if (i2 in removed_clique_indices):
+                            continue
+                        if (clique_edges[i1,i2]):
+                            c2 = clique_scopes[i2]
+                            if (c2.issuperset(c1)):
+                                removed_clique_indices.add(i1)
+                                clique_edges[i2,:] |= clique_edges[i1,:]
+                                clique_edges[:,i2] |= clique_edges[:,i1]
+                                clique_edges[i2,i2] = 0
+                                modified = True
+                                break
+                    if (modified):
+                        break
+                if (not modified):
+                    break
+            remaining_clique_indices = sorted(list(set(range(len(clique_scopes)))-set(removed_clique_indices)))
+            clique_scopes = [clique_scopes[i] for i in remaining_clique_indices]
+            clique_edges = clique_edges[remaining_clique_indices,:][:,remaining_clique_indices]
+            return (clique_scopes, clique_edges)
+
+        # Prune the tree of unneccessary cliques
+        clique_scopes, clique_edges = prune_tree(clique_scopes, clique_edges)
+
+        # These are our results
+        self.clique_connectivity = np.sum(clique_edges, axis=1)
+        self.leaf_clique_indices =np.nonzero(self.clique_connectivity==1)[0] # Find all cliques which are connected to just one other clique
+
+        self.clique_scopes = clique_scopes
+        self.clique_edges = clique_edges
+        self.initialized = False
+
+    def get_mem_usage(self, float_size=8):
+        ''' Estimate memory usage when calibrating an entire tree.
+            This simply calculates the combined size of all the clique tensors and the messaging tensors.
+            An important size to know, before you actually try to allocate the memory.
+
+            It might actually be even much better to use theano.tensor.utils.shape_of_variables(fgraph, input_shapes)
+            see http://deeplearning.net/software/theano/library/tensor/utils.html
+            as this will probably give a much more accurate number for a given query
+            '''
+        sumsize = long(0)
+        for i in range(len(self.clique_scopes)):
+            csize = long(float_size)
+            for v in self.clique_scopes[i]:
+                csize *= long(self.discrete_pgm.cardinalities[v])
+            sumsize += long(csize)
+        for i in range(len(self.clique_scopes)):
+            # Calculate size of clique potential
+            csize = long(float_size)
+            for v in self.clique_scopes[i]:
+                csize *= long(self.discrete_pgm.cardinalities[v])
+            sumsize += csize
+            # Calculate size for each message potential
+            for i2 in range(len(self.clique_scopes)):
+                if (self.clique_edges[i,i2]):
+                    message_scope = self.clique_scopes[i] & self.clique_scopes[i2]
+                    msize = long(float_size)
+                    for v in message_scope:
+                        msize *= long(self.discrete_pgm.cardinalities[v])
+                    sumsize += long(msize)
+        return sumsize
+
+    def _create_initial_potentials(self, factors=[]):
+        '''
+        Assign factors to cliques, and calculate initial potentials by multiplying these initial factors
+        raises an Exception if one of the factors does not fit into any clique
+        '''
+        clique_map = [None]*len(self.clique_scopes) #
+        clique_init = [-1]*len(self.clique_scopes)
+        fs = [f.scope for f in factors]
+        for fi in range(len(factors)):
+            assigned = False
+            for ci in range(len(self.clique_scopes)):
+                if (fs[fi].issubset(self.clique_scopes[ci])):
+                    assigned = True
+                    if (clique_map[ci] is None):
+                        clique_map[ci] = []
+                    clique_map[ci].append(fi)
+                    if (fs[fi] == self.clique_scopes[ci]):
+                        clique_init[ci] = fi  # We have a matching assigned factor, so don't bother initializing this with ones
+                    break
+            if (not assigned):
+                raise Exception("Factor %d does not fit into the clique tree. Scope (%r) " % (fi, factors[fi].var_set))
+
+        clique_potentials = []
+        for ci in range(len(self.clique_scopes)):
+            if (clique_init[ci]==-1):
+                cpot = PotentialTable(self.clique_scopes[ci], self.neutral)
+            else:
+                cpot = factors[clique_init[ci]]
+            for fi in clique_map[ci]:
+                if (fi==clique_init[ci]):
+                    continue
+                cpot = self.op(cpot, factors[fi])
+            clique_potentials.append(cpot)
+        return clique_potentials
+
+    def _create_initial_message_potentials(self):
+        'Trivial helper function'
+        messages = [None]*len(self.clique_scopes)
+        for c1 in range(len(self.clique_scopes)):
+            messages[c1] = [None]*len(self.clique_scopes)
+        return messages
+
+    def _calc_message_order(self):
+        ''' Given the clique list and their adjacency matrix, calculate a message passing order. '''
+        unmessaged = np.copy(self.clique_edges)
+        message_ordering = list()
+        reverse_messages = list()
+        while True:
+            next_cliques = np.nonzero(np.sum(unmessaged, axis=1)==1)[0] # Find all cliques which can pass a message immediately
+            if (len(next_cliques)==0):
+                break
+            for src_clique in next_cliques:
+                target_cliques = np.nonzero(unmessaged[:,src_clique])[0] # Find index of the one unmessaged neighbour
+                if (len(target_cliques)==0):
+                    break # This happens when this is the last clique remaining
+                target_clique = target_cliques[0]
+                message_ordering.append((src_clique, target_clique))
+                reverse_messages.append((target_clique, src_clique))
+
+                unmessaged[src_clique,target_clique]=0
+                unmessaged[target_clique, src_clique]=0
+        assert np.all(unmessaged==0)
+        res = list(message_ordering) + list(reversed(reverse_messages))
+        return res
+
+    def calibrate_potentials_init(self, factors, algo='sum_product', message_order=None):
+        return _LoopyBPState(factors, algo, message_order)
+
+
+    def probability(self, factors):
+        '''Return a symbolic theano expression for the joint marginal probability of all given factors
+           Args:
+               factors(list(PotentialTable)): List of potential table factors to include.
+                                           These may be normalized conditional probability tables or evidence factors
+
+           Returns:
+               A symbolic theano scalar which depends on the given factors. If the given factors consist of conditional
+               probability tables and evidence factors, the result calculates the probability of the evidence.
+        '''
+        return self._prob_expr(factors, False)
+
+    def logp(self, factors):
+        '''Return a symbolic theano expression for the joint marginal probability of all given factors
+           Args:
+               factors(list(PotentialTable)): List of potential table factors to include.
+                                           These may be normalized conditional probability tables or evidence factors
+
+           Returns:
+               A symbolic theano scalar which depends on the given factors. If the given factors consist of conditional
+               probability tables and evidence factors, the result calculates the probability of the evidence.
+        '''
+        return self._prob_expr(factors, True)
+
+    def _prob_expr(self, factors, as_logp):
+        ''' Implementation for probability and logp functions respectively'''
+
+        # Get Calibrated Potentials
+        calibrated = self.calibrated_potentials(factors, 'sum_product')
+        minlen = 9999999999
+        mint = None
+        # Find a clique with minimal scope, so we minimize the amount of final summing
+        for v in calibrated:
+            if (len(v.scope)<minlen):
+                minlen = len(v.scope)
+                mint = v
+                if (minlen==1):
+                    break
+        # Marginalize out everything
+        if (self.logspace):
+            res = mint.logsumexp_marginalize(mint.scope)
+            res = T.reshape(res.pt_tensor, [1], ndim=1)[0]
+            if (not as_logp):
+                res = T.exp(res)
+        else:
+            res = mint.marginalize(mint.scope)
+            res = T.reshape(res.pt_tensor, [1], ndim=1)[0]
+            if (as_logp):
+                res = T.log(res)
+        return res
+    
+class _LoopyBPState(object):
+    ''' Internal class which represents the iterative state of multiple Message Passing iterations given a single input
+    ''' 
+    
+    def __init__(self, mpgraph, factors, algo='sum_product', message_order=None):
+        ''' Construcot of the _LoopyBPState object.
+        
+        Args:
+            mpgraph: Message Passing Graph. Usually a LoopyBPInference instance
+            factors: Factors, including possible evidence factors, which form the initial potentials
+            algo: Algorithm. May be either 'sum_product', 'max_product' or 'min_product'
+            message_order: Default messaging order (list of (src, target) tuples to use in pass_messages
+        '''
+        if (algo not in ['sum_product', 'max_product', 'min_product']):
+            raise Exception("Invalid argument '%s' for algo parameter" % (algo))
+        self.factors = factors
+        self.algo = algo
+        self.mpgraph = mpgraph
+        self.messages = {}        
+        self.initial_potentials = mpgraph.create_initial_potentials(factors)
+        if (message_order is None):
+            self.message_order = self._calc_message_order()
+        self.iteration_results = []
+            
+    def pass_messages(self, message_order=None, input_messages=None):
+        '''
+        Iterate message passing
+        Args:
+            message_order: List of (src_clique_idx, target_clique_idx) tuples which gives the messages that should be passed
+            input_messages: Dict with (src_clique_idx, target_clique_idx) tuple keys, which are merged with the previous messaging state. 
+                            May be used to pass in a shared state, for example.
+        Returns:
+            Tuple consisting of: (message_order, dict of updated clique potentials, dict of message potentials)
+            
+            The result is also appended to this objects "iteration_results" list.
+        '''   
+        messages = dict(self.messages)
+        for k in input_messages.keys():
+            messages[k] = input_messages[k]
+        mpgraph = self.mpgraph
+        initial_potentials = self.initial_potentials
+        if (message_order is None):
+            message_order = self.message_order
+        algo = self.algo
+        messaged = np.zeros_like(mpgraph.clique_edges)
+        for src, target in message_order:
+            potential = initial_potentials[src]
+            nz = np.nonzero(messaged[:,src])[0]
+            relevant_messages = set([int(z) for z in nz])-set([target])
+            for mi in relevant_messages:
+                potential = mpgraph.op(potential, messages[(mi,src)])
+            message_scope = mpgraph.clique_scopes[src] & mpgraph.clique_scopes[target]
+
+            if (algo=='sum_product'):
+                if (mpgraph.logspace):
+                    messages[(src,target)] = potential.logsumexp_marginalize(potential.scope - message_scope)
+                else:
+                    messages[(src, target)] = potential.marginalize(potential.scope - message_scope)
+            if (algo=='max_product'):
+                messages[(src,target)] = potential.max_marginalize(potential.scope - message_scope)
+            if (algo=='min_product'):
+                messages[(src,target)] = potential.min_marginalize(potential.scope - message_scope)
+            messaged[src,target] = 1
+        assert np.all(messaged==mpgraph.clique_edges)
+        calibrated_potentials = []
+        for c in range(len(mpgraph.clique_scopes)):
+            incoming_messages = np.nonzero(messaged[:,c])[0]
+
+            potential = initial_potentials[c]
+            for i in incoming_messages:
+                potential = mpgraph.op(potential, messages[(i,c)])
+            calibrated_potentials.append(potential)
+        updated_clique_potentials = {}
+        updated_messages = dict(messages)
+        for i, cpot in enumerate(calibrated_potentials):
+            updated_clique_potentials[mpgraph.clique_scope[i]] = cpot
+        result =  (message_order, updated_clique_potentials, updated_messages)
+        self.iteration_results.append(result)
+        return result
+        

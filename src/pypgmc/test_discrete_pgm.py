@@ -604,15 +604,15 @@ def test_loopy_bp_1():
 
 
 if __name__ == '__main__':
-    #print "Testing Potential Table Class .. "
-    #print test_potential_tables()
-    #print "Testing Clique Tree Creation .. "
-    #print test_clique_tree_creation()
-    #print "Testing clique tree calibration"
-    #print test_clique_tree_calibration()
-    #print "Testing clique tree calibration in log space"
-    #print test_log_clique_tree_calibration()
+    print "Testing Potential Table Class .. "
+    print test_potential_tables()
+    print "Testing Clique Tree Creation .. "
+    print test_clique_tree_creation()
+    print "Testing clique tree calibration"
+    print test_clique_tree_calibration()
+    print "Testing clique tree calibration in log space"
+    print test_log_clique_tree_calibration()
     #print "Testing SharedMessagePotentials class"
     #print test_shared_message_potentials()
-    print "Testing Loopy BP - 1"
-    print test_loopy_bp_1()
+    #print "Testing Loopy BP - 1"
+    #print test_loopy_bp_1()
