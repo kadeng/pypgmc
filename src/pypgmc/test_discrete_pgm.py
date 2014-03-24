@@ -314,7 +314,7 @@ def test_clique_tree_creation():
                     print "\tOK - Clique Count: %d - max clique size: %d " % (len(ctree.clique_scopes), max([len(scp) for scp in ctree.clique_scopes]))
                     print "\tCardinality: %d - Mem-Usage: Clique-Tree: %d kb, Loopy BP: %d kb" % (card, ctree.get_mem_usage()/1024, (loopy.get_mem_usage()/1024))
                     print "Allocating loopy bp resources"
-                    loopy.alloc_resources()
+                    #loopy.alloc_resources()
                     print "Done allocating"
 
             return "OK"
