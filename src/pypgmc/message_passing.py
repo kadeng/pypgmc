@@ -567,14 +567,14 @@ class _MPState(object):
             if (algo=='min_product'):
                 messages[(src,target)] = potential.min_marginalize(potential.scope - message_scope)
             messaged[src,target] = 1
-        assert np.all(messaged==mpgraph.clique_edges)
         updated_potentials = []
         for c in range(len(mpgraph.clique_scopes)):
-            incoming_messages = np.nonzero(messaged[:,c])[0]
-
+            incoming_messages = np.nonzero(mpgraph.clique_edges[:,c])[0]
             potential = initial_potentials[c]
             for i in incoming_messages:
-                potential = mpgraph.op(potential, messages[(i,c)])
+                msgidx = (i,c)
+                if (msgidx in messages):
+                    potential = mpgraph.op(potential, messages[msgidx])
             updated_potentials.append(potential)
         updated_messages = dict(messages)
         result =  (message_order, updated_potentials, updated_messages)
