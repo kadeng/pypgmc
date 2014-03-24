@@ -149,10 +149,10 @@ class MessagePassingGraph(object):
             messages[c1] = [None]*len(self.clique_scopes)
         return messages
 
-    def create_mp_state(self, factors, algo='sum_product', message_order=None):
+    def create_mp_state(self, factors, algo='sum_product'):
         ''' Create an _MPState object which wraps the state of possibly multiple messaging passes
-            for the given algorithm, list of factors and initial message order'''
-        return _MPState(self, factors, algo, message_order)
+            for the given algorithm and list of factors'''
+        return _MPState(self, factors, algo)
 
     
     def _calc_message_order(self):
@@ -160,7 +160,11 @@ class MessagePassingGraph(object):
         Given the clique list and their adjacency matrix, calculate a message passing order. 
         Constructs a message passing order which either completely calibrates the clique graph (if it is a tree),
         or, if it is not, is suited to be called iteratively. In any way, the message order will include all messages,
-        i.e. cover all possible edges in the clique graph. It is not neccessarily an optimal order if the graph is not a tree.'''
+        i.e. cover all possible edges in the clique graph. It is not neccessarily an optimal order if the graph is not a tree.
+        
+        For loopy graphs, repeated calls of this method might return a random alternative messaging scheme.
+        In order to get reproducible results, call np.random.seed(..) before a call to this method. 
+        '''
         unmessaged = np.copy(self.clique_edges)
         message_ordering = list()
         reverse_messages = list()
@@ -170,8 +174,19 @@ class MessagePassingGraph(object):
                 if (np.all(unmessaged == 0)):
                     break
                 else:
-                    # Find the first clique with a minimal number of incoming messages
-                    next_cliques = [ np.argmin(np.sum(unmessaged, axis=1))[0] ]
+                    # Special code for loopy graphs:
+                    # Find a random clique with a minimal positive number of incoming messages
+                    nsum = np.sum(unmessaged, axis=1)
+                    nnz = nsum[nsum>0]
+                    if (len(nnz)==0):
+                        break
+                    ngmval = np.min(nnz)
+                    next_cliques = np.nonzero(nsum == ngmval)[0]
+                    if (len(next_cliques) == 0):
+                        break
+                    next_cliques = [next_cliques[np.random.randint(0, len(next_cliques))]]
+            if (len(next_cliques) == 0):
+                break
             for src_clique in next_cliques:
                 target_cliques = np.nonzero(unmessaged[:, src_clique])[0]  # Find index of the one unmessaged neighbour
                 if (len(target_cliques) == 0):
@@ -201,6 +216,8 @@ class MessagePassingGraph(object):
         raise NotImplementedError()
 
 class CliqueTreeInference(MessagePassingGraph):
+    ''' The clique tree inference is an efficient exact inference algorithm for discrete
+        PGMs. It's the preferred algorithm to use if the resulting data structures are not prohibitevely large.'''
     
     def __init__(self, factor_scopes=[], discrete_pgm=None, logspace=False):
         super(CliqueTreeInference, self).__init__(factor_scopes, discrete_pgm, logspace)
@@ -490,7 +507,7 @@ class _MPState(object):
         Works completely symbolically by working with PotentialTable instances.
         
     ''' 
-    def __init__(self, mpgraph, factors, algo='sum_product', message_order=None):
+    def __init__(self, mpgraph, factors, algo='sum_product'):
         ''' Construcot of the _MPState object.
         
         Args:
@@ -506,8 +523,6 @@ class _MPState(object):
         self.mpgraph = mpgraph
         self.messages = {}        
         self.initial_potentials = mpgraph._create_initial_potentials(factors)
-        if (message_order is None):
-            self.message_order = mpgraph._calc_message_order()
         self.iteration_results = []
             
     def pass_messages(self, message_order=None, input_messages=None):
@@ -529,15 +544,17 @@ class _MPState(object):
         mpgraph = self.mpgraph
         initial_potentials = self.initial_potentials
         if (message_order is None):
-            message_order = self.message_order
+            message_order = mpgraph._calc_message_order()
         algo = self.algo
         messaged = np.zeros_like(mpgraph.clique_edges)
         for src, target in message_order:
             potential = initial_potentials[src]
-            nz = np.nonzero(messaged[:,src])[0]
+            nz = np.nonzero(mpgraph.clique_edges[:,src])[0]
             relevant_messages = set([int(z) for z in nz])-set([target])
             for mi in relevant_messages:
-                potential = mpgraph.op(potential, messages[(mi,src)])
+                msgidx = (mi,src)
+                if (msgidx in messages):
+                    potential = mpgraph.op(potential, messages[msgidx])
             message_scope = mpgraph.clique_scopes[src] & mpgraph.clique_scopes[target]
 
             if (algo=='sum_product'):

@@ -27,6 +27,5 @@ Created on May 24, 2013
 
 from discrete_pgm import DiscretePGM
 from potential_tables import PotentialTable
-from clique_tree_inference import CliqueTreeInference
-from loopy_bp_inference import LoopyBPInference, SharedMessagePotentials
+from message_passing import CliqueTreeInference, LoopyBPInference
 

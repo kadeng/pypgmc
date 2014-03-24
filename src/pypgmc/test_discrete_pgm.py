@@ -322,6 +322,28 @@ def test_clique_tree_creation():
     finally:
         theano.config.compute_test_value = ctv_backup
 
+def test_loop_messaging():
+    ctv_backup = theano.config.compute_test_value
+    theano.config.compute_test_value = 'off'
+    card = 5
+    try:
+        dmodel = DiscretePGM([card]*400)
+        factors = []
+        with dmodel:
+            factors.append(PotentialTable([0,1])) # P(a)
+            factors.append(PotentialTable([1,2])) # P(a|b)
+            factors.append(PotentialTable([0,2])) # P(c|b,d)
+            loopy = LoopyBPInference(factors)
+            print loopy.clique_scopes
+            print loopy.clique_edges
+            mo = loopy._calc_message_order()
+            print mo
+            return "OK"
+
+    finally:
+        theano.config.compute_test_value = ctv_backup
+
+
 def test_clique_tree_calibration():
     ctv_backup = theano.config.compute_test_value
     theano.config.compute_test_value = 'off'
@@ -612,6 +634,8 @@ if __name__ == '__main__':
     print test_clique_tree_calibration()
     print "Testing clique tree calibration in log space"
     print test_log_clique_tree_calibration()
+    print "Testing Loop message passing order"
+    test_loop_messaging()
     #print "Testing SharedMessagePotentials class"
     #print test_shared_message_potentials()
     #print "Testing Loopy BP - 1"
