@@ -493,13 +493,12 @@ def test_log_clique_tree_calibration():
         theano.config.compute_test_value = ctv_backup
 
 
-def test_shared_message_potentials():
+def test_loopy_calibration():
     ctv_backup = theano.config.compute_test_value
     theano.config.compute_test_value = 'off'
     try:
         dmodel = DiscretePGM([2,2,2,2],["a","b","c", "d"])
         factors = []
-        logfactors = []
         with dmodel:
             va = np.random.random(size=[2,2]) + 0.001
             vb = np.random.random(size=[2]) + 0.001
@@ -518,112 +517,72 @@ def test_shared_message_potentials():
             factors.append(PotentialTable(["c","b"], vcs, name="P(c|b)").normalize("c", inplace=False))
             factors.append(PotentialTable(["d", "c"], vds, name="P(d|c)").normalize("d", inplace=False))
             factors.append(c_evidence)
+    #
+            ctree = LoopyBPInference(factors)
+            ctree2 = CliqueTreeInference(factors)
+            print ctree.clique_scopes
+            print ctree.clique_edges
 
-            logfactors = [f.to_logspace(inplace=False) for f in factors]
+            probexpr = ctree.probability(factors)
+            probexpr2 = ctree2.probability(factors)
+            probfunc = theano.function([c_evidence.pt_tensor], probexpr, on_unused_input='warn')
+            probfunc2 = theano.function([c_evidence.pt_tensor], probexpr2, on_unused_input='warn')
+            
+            evidence = np.ones((2), dtype=theano.config.floatX)
+            import logging
+            _logger = logging.getLogger("theano.compile.debugmode")
+            #_logger.setLevel(logging.DEBUG)
+            prob = probfunc(evidence)
+            print prob
+            prob = probfunc(evidence)
+            prob2 = probfunc2(evidence)
+            print "T1"
+            import time
+            t1 = time.time()
+            prob = probfunc(evidence)
+            prob = probfunc(evidence)
+            prob = probfunc(evidence)
+            t2 = time.time()
+            print "T2: ", ((t2-t1)*1000.0)
+            t1 = time.time()
+            prob = probfunc2(evidence)
+            prob = probfunc2(evidence)
+            prob = probfunc2(evidence)
+            t2 = time.time()
+            print "T2: ", ((t2-t1)*1000.0)
+            #assert abs(probfunc(evidence)-1.0)<0.0001
+            evidence[0] = 0
+            p1 = probfunc(evidence)
+            evidence[0] = 1.
+            evidence[1] = 0.
+            p2 = probfunc(evidence)
+            print abs(p1+p2-1.0)
+            #assert abs(p1+p2-1.0)<0.0001
 
-            ctree = CliqueTreeInference(logfactors, None, True)
+            equivalent_potential = factors[0]
+            for i in range(1, len(factors)):
+                equivalent_potential = equivalent_potential * factors[i]
 
-            probexpr = ctree.probability(logfactors)
-            probfunc = theano.function([c_evidence.pt_tensor], probexpr)
+            eprob = T.sum(equivalent_potential.pt_tensor, axis=[0,1,2,3])
+            eprobfunc = theano.function([c_evidence.pt_tensor], eprob)
 
             evidence = np.ones((2))
-
-            loopy = LoopyBPInference(logfactors, None, True)
-            loopy.alloc_resources()
-            assert set(ctree.clique_scopes) == set(loopy.clique_scopes)
-
-            msgs = loopy.shared_messages
-            print msgs._message_shape(0,1)
-            print msgs._message_shape(2,0)
-            print "_--"
-            try:
-                print msgs._message_shape(1,1)
-                assert False
-            except:
-                pass
-            try:
-                print msgs._message_shape(1,2)
-                assert False
-            except:
-                pass
-            shmem = loopy.shared_messages.message_mem
-            shape = theano.function([], [shmem.shape])
-
-            print shape()
-            reset_fn = msgs.reset_function(0.0)
-            get_fn = msgs.get_message_function(0, 2)
-            get_expr = msgs.get_message_potential(0,2)
-            sval = msgs.message_potential_var(0, 2)
-            set_fn = msgs.set_message_function(0, 2, sval, [sval.pt_tensor])
-            reset_fn()
-            zero_msg = get_fn()
-            print get_fn().shape
-            print zero_msg
-            print "Expecting 1"
-            print shmem.get_value()
-            reset_fn = msgs.reset_function(1.0)
-            reset_fn()
-            ones_msg = np.array(get_fn())
-            print ones_msg
-            print "Expecting 0"
-            print shmem.get_value()
-            reset_fn = msgs.reset_function(2.0)
-            print "Expecting 2"
-            reset_fn()
-            print shmem.get_value()
-            print get_fn()
-            print ones_msg.shape
-            set_fn(ones_msg)
-            print shmem.get_value()
-        return "OK"
-    finally:
-        theano.config.compute_test_value = ctv_backup
-
-def test_loopy_bp_1():
-    ctv_backup = theano.config.compute_test_value
-    theano.config.compute_test_value = 'off'
-    try:
-        dmodel = DiscretePGM([2,2,2,2],["a","b","c", "d"])
-        factors = []
-        logfactors = []
-        with dmodel:
-            va = np.random.random(size=[2,2]) + 0.001
-            vb = np.random.random(size=[2]) + 0.001
-            vc = np.random.random(size=[2,2]) + 0.001
-            vd = np.random.random(size=[2,2]) + 0.001
-
-            vas = theano.shared(va)
-            vbs = theano.shared(vb)
-            vcs = theano.shared(vc)
-            vds = theano.shared(vd)
-
-            c_evidence = PotentialTable(["c"], name="E(c)")
-
-            factors.append(PotentialTable(["a","b"],vas,  name="P(a|b)").normalize("a", inplace=False))
-            factors.append(PotentialTable(["b"],vbs, name="P(b)").normalize("b", inplace=False))
-            factors.append(PotentialTable(["c","b"], vcs, name="P(c|b)").normalize("c", inplace=False))
-            factors.append(PotentialTable(["d", "c"], vds, name="P(d|c)").normalize("d", inplace=False))
-            factors.append(c_evidence)
-
-            logfactors = [f.to_logspace(inplace=False) for f in factors]
-
-            ctree = CliqueTreeInference(logfactors, None, True)
-
-            probexpr = ctree.probability(logfactors)
-            probfunc = theano.function([c_evidence.pt_tensor], probexpr)
-
-            evidence = np.ones((2), dtype=theano.config.floatX)
-
-            inputs = [va, vb, vc, vd, evidence]
-            loopy = LoopyBPInference(logfactors, None, True)
-            loopy.alloc_resources()
-            loopy.set_factors(logfactors, logfactors)
-            loopy.inference(verbose=True, max_iters=10, threshold=0.000001, input=inputs)
+            evidence[0] = 0
+            ep1 = eprobfunc(evidence)
+            evidence[0] = 1.
+            evidence[1] = 0.
+            ep2 = eprobfunc(evidence)
+            print abs(ep1+ep2-1.0)
+            print abs(ep1-p1)
+            print abs(ep2-p2)
+            #assert abs(ep1+ep2-1.0)<0.0001
+            #assert abs(ep1-p1)<0.00001
+            #assert abs(ep2-p2)<0.00001
 
             return "OK"
+
     finally:
         theano.config.compute_test_value = ctv_backup
-
 
 if __name__ == '__main__':
     print "Testing Potential Table Class .. "
@@ -635,8 +594,7 @@ if __name__ == '__main__':
     print "Testing clique tree calibration in log space"
     print test_log_clique_tree_calibration()
     print "Testing Loop message passing order"
-    test_loop_messaging()
-    #print "Testing SharedMessagePotentials class"
-    #print test_shared_message_potentials()
-    #print "Testing Loopy BP - 1"
-    #print test_loopy_bp_1()
+    print test_loop_messaging()
+    print "Testing loopy bp calibration"
+    print test_loopy_calibration()
+    

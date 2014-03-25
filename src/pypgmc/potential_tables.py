@@ -13,6 +13,7 @@ import theano.tensor as T
 from discrete_pgm import DiscretePGM
 import numpy as np
 from expression_utils import LogSumExp
+from copy import copy
 
 class PotentialTable(object):
 
@@ -52,6 +53,13 @@ class PotentialTable(object):
             self.pt_tensor = T.TensorVariable(type=tensor_type, name=name)
         else:
             self.pt_tensor = T.as_tensor_variable(pt_tensor)
+
+    def replace_tensor(self, tensor):
+        ''' Return copy of this object, with a compatible tensor replacing this object's pt_tensor'''
+        assert tensor.broadcastable == self.pt_tensor.broadcastable
+        res = copy(self)
+        res.pt_tensor = tensor
+        return res
 
     def _ct(self, other):
         ''' Helper function to make tensors dimensions compatible'''

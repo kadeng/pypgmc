@@ -15,6 +15,7 @@ from potential_tables import *
 import numpy as np
 import theano
 import theano.tensor as T
+import theano.scan_module
 from expression_utils import add_op, mul_op
 
 class MessagePassingGraph(object):
@@ -34,7 +35,7 @@ class MessagePassingGraph(object):
                     the create_loopy_graph function, or the create_clique_tree_graph function. 
 
         Returns:
-            A new CliqueTreeInference object configured to work with these
+            A new MessagePassingGraph object
         """
         if (discrete_pgm is None):
             discrete_pgm = DiscretePGM.get_context()
@@ -201,6 +202,77 @@ class MessagePassingGraph(object):
         res = list(message_ordering) + list(reversed(reverse_messages))
         return res    
     
+    def probability(self, factors):
+        '''Return a symbolic theano expression for the joint marginal probability of all given factors
+           Args:
+               factors(list(PotentialTable)): List of potential table factors to include.
+                                           These may be normalized conditional probability tables or evidence factors
+                                           
+
+           Returns:
+               A symbolic theano scalar which depends on the given factors. If the given factors consist of conditional
+               probability tables and evidence factors, the result calculates the probability of the evidence.
+        '''
+        return self._prob_expr(factors, False)
+
+    def logp(self, factors):
+        '''Return a symbolic theano expression for the joint marginal probability of all given factors
+           Args:
+               factors(list(PotentialTable)): List of potential table factors to include.
+                                           These may be normalized conditional probability tables or evidence factors
+
+           Returns:
+               A symbolic theano scalar which depends on the given factors. If the given factors consist of conditional
+               probability tables and evidence factors, the result calculates the probability of the evidence.
+        '''
+        return self._prob_expr(factors, True)
+
+    def _prob_expr(self, factors, as_logp):
+        ''' Implementation for probability and logp functions respectively'''
+
+        # Get Calibrated Potentials
+        calibrated = self.calibrated_potentials(factors, 'sum_product')
+        minlen = 9999999999
+        mint = None
+        # Find a clique with minimal scope, so we minimize the amount of final summing
+        for v in calibrated:
+            if (len(v.scope)<minlen):
+                minlen = len(v.scope)
+                mint = v
+                if (minlen==1):
+                    break
+        # Marginalize out everything
+        if (self.logspace):
+            res = mint.logsumexp_marginalize(mint.scope)
+            res = T.reshape(res.pt_tensor, [1], ndim=1)[0]
+            if (not as_logp):
+                res = T.exp(res)
+        else:
+            res = mint.marginalize(mint.scope)
+            res = T.reshape(res.pt_tensor, [1], ndim=1)[0]
+            if (as_logp):
+                res = T.log(res)
+        return res
+
+
+    def calibrated_potentials(self, factors, algo='sum_product'):
+        ''' Given a list of PotentialTable factors, return a list of
+            PotentialTables containing symbolic tensor representations of calibrated clique potentials.
+            These potentials agree on marginals and can be used for most relevant queries.
+
+            Args:
+            factors(list(PotentialTable)): List of potential table factors to include.
+                                           These may be normalized conditional probability tables or evidence factors
+
+            algo: May be either 'sum_product', 'max_product' or 'min_product'
+
+
+        Returns:
+            list of potential tables containing symbolic theano tensors representing the calibrated cliques
+            a theano scalar value of 0 indicating that this always converges in one step.
+            '''
+        raise NotImplementedError()
+    
     def _create_clique_graph(self):
         ''' 
         Called during initialization. Combine factors into larger cliques
@@ -220,6 +292,21 @@ class CliqueTreeInference(MessagePassingGraph):
         PGMs. It's the preferred algorithm to use if the resulting data structures are not prohibitevely large.'''
     
     def __init__(self, factor_scopes=[], discrete_pgm=None, logspace=False):
+        """ Construct CliqueTreeInference object from set of factor scopes.
+            
+        Args:
+            factor_scopes(list(scopes)): List of variable scopes (given by name or variable index) or PotentialTable scopes.
+                                        in the latter case, scopes from these PotentialTables will be taken.
+            discrete_pgm(DiscretePGM): DiscretePGM model we are working in. May be null if we are "with" in that model's context
+
+            logspace: Whether to operate in log-space (in these case factor are added instead of multiplies, and we need to do logsumexp operations instead
+                     of simple summing when marginalizing
+            graph_construcor: Graph construction method, which can either create a clique tree or a loopy graph. Usually you will pass either
+                    the create_loopy_graph function, or the create_clique_tree_graph function. 
+
+        Returns:
+            A new CliqueTreeInference object
+        """
         super(CliqueTreeInference, self).__init__(factor_scopes, discrete_pgm, logspace)
            
     def _create_clique_graph(self):
@@ -362,68 +449,45 @@ class CliqueTreeInference(MessagePassingGraph):
 
         Returns:
             list of potential tables containing symbolic theano tensors representing the calibrated cliques
+            a theano scalar value of 0 indicating that this always converges in one step.
             '''
         if (algo not in ['sum_product', 'max_product', 'min_product']):
             raise Exception("Invalid argument '%s' for algo parameter" % (algo))
         mpstate = self.create_mp_state(factors, algo)
-        (message_order, calibrated_clique_potentials, updated_messages) = mpstate.pass_messages()
+        (message_order, updated_messages) = mpstate.pass_messages()
+        calibrated_clique_potentials = mpstate.get_calibrated_potentials(updated_messages)
         return calibrated_clique_potentials
     
-    def probability(self, factors):
-        '''Return a symbolic theano expression for the joint marginal probability of all given factors
-           Args:
-               factors(list(PotentialTable)): List of potential table factors to include.
-                                           These may be normalized conditional probability tables or evidence factors
-
-           Returns:
-               A symbolic theano scalar which depends on the given factors. If the given factors consist of conditional
-               probability tables and evidence factors, the result calculates the probability of the evidence.
-        '''
-        return self._prob_expr(factors, False)
-
-    def logp(self, factors):
-        '''Return a symbolic theano expression for the joint marginal probability of all given factors
-           Args:
-               factors(list(PotentialTable)): List of potential table factors to include.
-                                           These may be normalized conditional probability tables or evidence factors
-
-           Returns:
-               A symbolic theano scalar which depends on the given factors. If the given factors consist of conditional
-               probability tables and evidence factors, the result calculates the probability of the evidence.
-        '''
-        return self._prob_expr(factors, True)
-
-    def _prob_expr(self, factors, as_logp):
-        ''' Implementation for probability and logp functions respectively'''
-
-        # Get Calibrated Potentials
-        calibrated = self.calibrated_potentials(factors, 'sum_product')
-        minlen = 9999999999
-        mint = None
-        # Find a clique with minimal scope, so we minimize the amount of final summing
-        for v in calibrated:
-            if (len(v.scope)<minlen):
-                minlen = len(v.scope)
-                mint = v
-                if (minlen==1):
-                    break
-        # Marginalize out everything
-        if (self.logspace):
-            res = mint.logsumexp_marginalize(mint.scope)
-            res = T.reshape(res.pt_tensor, [1], ndim=1)[0]
-            if (not as_logp):
-                res = T.exp(res)
-        else:
-            res = mint.marginalize(mint.scope)
-            res = T.reshape(res.pt_tensor, [1], ndim=1)[0]
-            if (as_logp):
-                res = T.log(res)
-        return res
-
-class LoopyBPInference(MessagePassingGraph):
     
-    def __init__(self, factor_scopes=[], discrete_pgm=None, logspace=False):
+class LoopyBPInference(MessagePassingGraph):
+    ''' Loopy Belief Propagation Inference implementation based on theano.
+    
+    Loopy Belief Propagation is a scalable approximate inference algorithm which is capable to solve problems which are
+    intractable for CliqueTrees due to memory and time constraints. If the solution is tractable using CliqueTreeInference, you should
+    prefer that. If not, try this one. You can check the plausibility of using CliqueTreeInference by calculating the memory usage
+    using the get_mem_usage() method, which is available for both CliqueTree Inference and LoopyBPInference.
+    '''
+    
+    def __init__(self, factor_scopes=[], discrete_pgm=None, logspace=False, max_iters=10, convergence_threshold=-1.0):
+        """ Construct LoopyBPInference object from set of factor scopes.
+            
+        Args:
+            factor_scopes(list(scopes)): List of variable scopes (given by name or variable index) or PotentialTable scopes.
+                                        in the latter case, scopes from these PotentialTables will be taken.
+            discrete_pgm(DiscretePGM): DiscretePGM model we are working in. May be null if we are "with" in that model's context
+
+            logspace: Whether to operate in log-space (in these case factor are added instead of multiplies, and we need to do logsumexp operations instead
+                     of simple summing when marginalizing
+            max_iters: Maximum number of iterative steps - defaults to 10'''
+            convergence_threshold: How much the message tensors may change in sum before the iteration stops. 
+                                If negative, we run a fixed number of iterations. Default: Negative (-1.0)
+            
+        Returns:
+            A new LoopyBPInference object
+        """
         super(LoopyBPInference, self).__init__(factor_scopes, discrete_pgm, logspace)
+        self.max_iters = max_iters
+        self.convergence_threshold = convergence_threshold
         
     def _create_clique_graph(self):
         ''' Create a potentially loopy message passing graph
@@ -499,6 +563,102 @@ class LoopyBPInference(MessagePassingGraph):
         self.clique_edges = clique_edges
         self.initialized = False
         
+    def calibrated_potentials(self, factors, algo='sum_product', return_convergence_info=False):
+        ''' Given a list of PotentialTable factors, return a list of
+            PotentialTables containing symbolic tensor representations of calibrated clique potentials.
+            These potentials agree on marginals and can be used for most relevant queries.
+            
+            WARNING: Setting a non-negative convergence threshold (i.e. enabling the corresponding code) has a huge performance impact !
+            It's definitely recommended to run with a fixed number of iterations, even if this means a large number.
+
+            Args:
+            factors(list(PotentialTable)): List of potential table factors to include.
+                                           These may be normalized conditional probability tables or evidence factors
+
+            algo: May be either 'sum_product', 'max_product' or 'min_product'
+            
+            return_convergence_info: Whether to return the convergence info in order to evaluate whether the iteration converged or not
+
+        Returns a tuple consisting of:
+            * list of potential tables containing symbolic theano tensors representing the calibrated cliques
+            * if return_convergence_criterion is True: Expression for convergence criterion and the number of iterations
+            '''
+        if (algo not in ['sum_product', 'max_product', 'min_product']):
+            raise Exception("Invalid argument '%s' for algo parameter" % (algo))
+        
+        convergence_threshold=self.convergence_threshold
+        max_steps = self.max_iters 
+        
+        'Create an initial set of messages'
+        mpstate = self.create_mp_state(factors, algo)
+        (message_order, first_messages) = mpstate.pass_messages()
+        
+        'Initial value for the convergence checking criterion '
+        convergence_criterion = T.ones((1), dtype=theano.config.floatX)[0]
+        initial_values =  [convergence_criterion]+ [first_messages[midx].pt_tensor for midx in message_order]
+        'We are going to iterate via a pretty complex theano scan op.'
+        
+        def pass_fn(*inputs):
+            ''' 
+            Function for scan op. Has to work with variable number of arguments. 
+            Input layout: diff, message[message_order[0]], ..., message[message_order[N], initial_potential[0], ..., initial_potential[M] 
+            '''
+            
+            input_messages = {}
+            ''' Quick creation of message potential tables by using a shallow copy of existing potential tables'''
+            for i,midx in enumerate(message_order):
+                input_messages[midx] = first_messages[midx].replace_tensor(inputs[i+1])
+            
+            off = 1+len(message_order) #  offset into input for the initial potentials
+            ipotentials = []
+            ''' Create initial potentials from passed inputs'''
+            for i, pot in enumerate(mpstate.initial_potentials):
+                ipotentials.append(pot.replace_tensor(inputs[off+i]))
+            
+            ''' Pass messages and calculate next set of messages '''
+            (used_message_order, next_messages) = mpstate.pass_messages(input_messages=input_messages, initial_potentials=ipotentials)
+            if (convergence_threshold>=0.0): 
+                
+                ''' Calculate absolute difference between last set of differences and current set for convergence diagnostics'''
+                diff = T.sum( T.abs_(next_messages[used_message_order[0]].pt_tensor.flatten() - input_messages[used_message_order[0]].pt_tensor.flatten()))
+                for i in range(1, len(used_message_order)):
+                    diff += T.sum( T.abs_(next_messages[used_message_order[i]].pt_tensor.flatten() - input_messages[used_message_order[i]].pt_tensor.flatten()))
+                
+                ''' Create result which conforms to the start of the input layout'''
+                resvalues = [diff] + [next_messages[midx].pt_tensor for midx in message_order]
+                ''' Return updated values plus a convergence criterion'''
+                return resvalues, theano.scan_module.until(diff<=convergence_threshold)
+            else:
+                diff = convergence_criterion
+                resvalues = [diff] + [next_messages[midx].pt_tensor for midx in message_order]
+                return resvalues
+            
+            
+
+        
+        ' Calculate the theano expressions for the iterative message passing scheme'''
+        result, updates = theano.scan(fn=pass_fn,
+                                        outputs_info=initial_values,
+                                        non_sequences=[p.pt_tensor for p in mpstate.initial_potentials], 
+                                        n_steps=max_steps)
+        
+        ''' The result[0] are the time slices of the *diff' variable. So diff[-1] is the last diff, and len(result[0]) is the number of iteration steps that we did.'''
+        
+            
+        ''' Create final message potential dictionary'''
+        result_messages = {}
+        for i,midx in enumerate(message_order):
+            result_messages[midx] = first_messages[midx].replace_tensor(result[i+1][-1])
+            
+        ''' Calculate calibrated potentials from these'''
+        calibrated_potentials = mpstate.get_calibrated_potentials(result_messages)
+        if (not return_convergence_info):
+            return calibrated_potentials
+        else:
+            convergence = result[0][-1]
+            niters = result[0].shape[0]
+            return (calibrated_potentials, convergence, niters)
+        
 class _MPState(object):
     ''' Internal class which represents the state of a Message Passing operation given a single set of input factors.
         May be used to construct various message passing and iteration schemes, from closed form exact solutions (CliqueTree)
@@ -523,9 +683,8 @@ class _MPState(object):
         self.mpgraph = mpgraph
         self.messages = {}        
         self.initial_potentials = mpgraph._create_initial_potentials(factors)
-        self.iteration_results = []
             
-    def pass_messages(self, message_order=None, input_messages=None):
+    def pass_messages(self, message_order=None, input_messages=None, initial_potentials=None):
         '''
         Iterate message passing
         Args:
@@ -542,7 +701,8 @@ class _MPState(object):
             for k in input_messages.keys():
                 messages[k] = input_messages[k]
         mpgraph = self.mpgraph
-        initial_potentials = self.initial_potentials
+        if (initial_potentials is None):
+            initial_potentials = self.initial_potentials
         if (message_order is None):
             message_order = mpgraph._calc_message_order()
         algo = self.algo
@@ -567,7 +727,17 @@ class _MPState(object):
             if (algo=='min_product'):
                 messages[(src,target)] = potential.min_marginalize(potential.scope - message_scope)
             messaged[src,target] = 1
+
+        updated_messages = dict(messages)
+        result =  (message_order, updated_messages)
+        return result
+    
+    def get_calibrated_potentials(self, messages, initial_potentials=None):
+        ''' Returns calibrated potential expressions given a set of messages'''
+        if (initial_potentials is None):
+            initial_potentials = self.initial_potentials
         updated_potentials = []
+        mpgraph = self.mpgraph
         for c in range(len(mpgraph.clique_scopes)):
             incoming_messages = np.nonzero(mpgraph.clique_edges[:,c])[0]
             potential = initial_potentials[c]
@@ -576,8 +746,5 @@ class _MPState(object):
                 if (msgidx in messages):
                     potential = mpgraph.op(potential, messages[msgidx])
             updated_potentials.append(potential)
-        updated_messages = dict(messages)
-        result =  (message_order, updated_potentials, updated_messages)
-        self.iteration_results.append(result)
-        return result
+        return updated_potentials
 
