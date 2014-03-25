@@ -10,7 +10,7 @@ MAINTAINER = 'Kai Londenberg'
 MAINTAINER_EMAIL = 'Kai.Londenberg@googlemail.com'
 AUTHOR = 'Kai Londenberg'
 AUTHOR_EMAIL = 'Kai.Londenberg@googlemail.com'
-URL = "http://github.com/pymc-devs/pymc"
+URL = "https://github.com/kadeng/pypgmc"
 LICENSE = "Apache 2.0 License "
 VERSION = ""
 
