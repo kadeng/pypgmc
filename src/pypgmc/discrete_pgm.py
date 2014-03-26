@@ -71,11 +71,7 @@ class DiscretePGM(Context):
         return frozenset(result)
 
 
-
-
-class BeliefNet(DiscretePGM):
-
-    def __init__(self):
-        DiscretePGM.__init__(self)
+        
+    
 
 

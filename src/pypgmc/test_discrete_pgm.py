@@ -528,6 +528,10 @@ def test_loopy_calibration():
             probfunc = theano.function([c_evidence.pt_tensor], probexpr, on_unused_input='warn')
             probfunc2 = theano.function([c_evidence.pt_tensor], probexpr2, on_unused_input='warn')
             
+            gprobfunc = theano.function([c_evidence.pt_tensor], T.grad(probexpr,c_evidence.pt_tensor) , on_unused_input='warn')
+            gprobfunc2 = theano.function([c_evidence.pt_tensor], T.grad(probexpr2,c_evidence.pt_tensor), on_unused_input='warn')
+            
+            
             evidence = np.ones((2), dtype=theano.config.floatX)
             import logging
             _logger = logging.getLogger("theano.compile.debugmode")
@@ -550,14 +554,14 @@ def test_loopy_calibration():
             prob = probfunc2(evidence)
             t2 = time.time()
             print "T2: ", ((t2-t1)*1000.0)
-            #assert abs(probfunc(evidence)-1.0)<0.0001
+            assert abs(probfunc(evidence)-1.0)<0.0001
             evidence[0] = 0
             p1 = probfunc(evidence)
             evidence[0] = 1.
             evidence[1] = 0.
             p2 = probfunc(evidence)
             print abs(p1+p2-1.0)
-            #assert abs(p1+p2-1.0)<0.0001
+            assert abs(p1+p2-1.0)<0.0001
 
             equivalent_potential = factors[0]
             for i in range(1, len(factors)):
@@ -575,9 +579,9 @@ def test_loopy_calibration():
             print abs(ep1+ep2-1.0)
             print abs(ep1-p1)
             print abs(ep2-p2)
-            #assert abs(ep1+ep2-1.0)<0.0001
-            #assert abs(ep1-p1)<0.00001
-            #assert abs(ep2-p2)<0.00001
+            assert abs(ep1+ep2-1.0)<0.0001
+            assert abs(ep1-p1)<0.00001
+            assert abs(ep2-p2)<0.00001
 
             return "OK"
 

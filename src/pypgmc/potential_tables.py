@@ -178,10 +178,6 @@ class PotentialTable(object):
             if inplace=False, return a new normalized PotentialTable. Otherwise, return nothing
             """
 
-        #vset = set(self.var_set)
-        #vset.remove(target_var)
-        #sum_axe_names = list(vset)
-        #sum_axes = [self.discrete_pgm.var_index(v) for v in sum_axe_names]
         normalizer = T.sum(self.pt_tensor, axis=self.var_idx_map[self.discrete_pgm.var_index(target_var)], keepdims=True)
         normalizer = T.switch(T.neq(normalizer, 0.0),normalizer, T.ones_like(normalizer))
         return self._modification_result(self.pt_tensor / normalizer, inplace)
@@ -269,9 +265,6 @@ class PotentialTable(object):
             A new PotentialTable, which incorporates the given evidence. I.e. all entries which do not agree with
             the evidence have been set to zero. The resulting PotentialTable will not be normalized.
         '''
-
-
-
         vset = self.discrete_pgm.map_var_set(frozenset(evidence_dict.keys()))
         # Without any evidence, don't limit selection
         indices = [slice(None,None),]*len(self.var_set)
@@ -319,3 +312,5 @@ def expand_shape(ndarr, var_set, discrete_pgm=None):
         for i in scope:
             shp[i] = discrete_pgm.cardinalities[i]
         return np.reshape(ndarr, shp)
+    
+
