@@ -2,8 +2,16 @@
 
 @author: Kai Londenberg
 
-@TODO: Implement an efficient Noisy-Max PotentialTable with sparse parametrization
-    as described in http://www.ia.uned.es/~seve/publications/MAX.pdf
+@TODO: 
+
+    * NoisyMax: Implement an efficient Noisy-Max PotentialTable with sparse parametrization
+      as described in https://web.archive.org/web/20130622092203/http://www.ia.uned.es/~seve/publications/MAX.pdf
+    
+    * Particle List Message Passing: Create an efficient particle list potential table implementation
+      where we use fast local map/shuffle/reduce operations to efficiently 
+          * join particle list potentials (required for potential multiply/add)
+          * incorporate evidence (skip / reweight all particles in the map phase to make them consistent with evidence)
+          * marginalize particle lists.    
 '''
 
 __all__ = ['PotentialTable']
