@@ -28,11 +28,11 @@ The most important next steps are:
 
 #### Exact discrete inference submodels in PyMC3.
 
-I have afinished Clique Tree implementation using Theano which should be easily integrated with PyMC3. Being able to calculate exact derivatives through the model might allow for some pretty interesting applications. These clique trees would be appear as a discrete multivariate distribution to PyMC. 
+The code contains a finished Clique Tree Inference implementation using Theano expressions which should be easily integrated with PyMC3. Being able to calculate exact derivatives through the model might allow for some pretty interesting applications. These clique trees would be appear as a discrete multivariate distribution to PyMC. 
 
 #### Fast and scalable approximate inference submodels using Loopy BP for PyMC 2
 
-While loopy BP isn't unbiased, it's an extremely fast and scalable general purpose inference algorithm. This is harder to integrate with PyMC3 due to the iterative nature of the algorithm (run it until convergence) it's less efficient to calculate derivatives etc. through the model. This is also pretty much implemented, but needs to be integrated with PyMC 2/3 and better tested and benchmarked.
+While loopy BP isn't unbiased, it's an extremely fast and scalable general purpose inference algorithm. This is harder to integrate with PyMC3 due to the iterative nature of the algorithm (run it until convergence) it's less efficient to calculate derivatives etc. through the model. This is also pretty much implemented (using Theano's Scan op for the iteration), but needs to be integrated with PyMC 2/3 and better tested and benchmarked.
 
 #### Loader for at least one common Bayesian Network format
 
@@ -46,12 +46,9 @@ The BN would calculate the probability of the dataset given the hyperparameters.
 
 I would like to show off some of the possibilities all of the above offers, probably in a few IPython Notebooks, tackling some old problems with new tools. 
 
-  
 ### Extended Roadmap
 
 All of the above would be pretty neat, and I think that will keep me occupied for a while. But then I have a few more ideas (which could probably keep me busy for years, and no I don't actually believe I will actually finish these, but hey ..)
-
-
 
  
 #### More than just Dirichlet Priors ...
