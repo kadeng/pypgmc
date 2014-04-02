@@ -75,3 +75,7 @@ particle based message passing, since these particles will usually be weighted.
 #### Network Structure Learning
 
 If we have a BN engine, it would probably make sense to include support for PEBL ( https://code.google.com/p/pebl-project/  ) which allows bayesian network structure learning, and maybe more explicit support for structure sampling like the one mentioned in this thread: https://groups.google.com/forum/#!topic/pymc/acTuyT4cp1Q - What might also be interesting is to implement causal structure learning algorithms like IC, PC and PC* (see Judea Pearls Book: Causality). Or we could leave this to existing tools like GeNie / SMILE etc..
+
+#### Minimum Probability Flow Learning
+
+Evaluate whether minimum probability flow learning ( see http://www.icml-2011.org/papers/480_icmlpaper.pdf ) can be applied to efficiently learn models without latent vars.
