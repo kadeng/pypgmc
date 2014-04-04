@@ -192,6 +192,9 @@ class PotentialTable(object):
 
     def to_logspace(self, inplace=True):
         return self._modification_result(T.log(self.pt_tensor), inplace)
+    
+    def from_logspace(self, inplace=True):
+        return self._modification_result(T.exp(self.pt_tensor), inplace)
 
     def get_subtensor(self, assignment_dict):
         ''' Get a subtensor of this potential table which agrees with the given assignment of values to variables
