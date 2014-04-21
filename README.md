@@ -79,3 +79,7 @@ If we have a BN engine, it would probably make sense to include support for PEBL
 #### Minimum Probability Flow Learning
 
 Evaluate whether minimum probability flow learning ( see http://www.icml-2011.org/papers/480_icmlpaper.pdf ) can be applied to efficiently learn models without latent vars.
+
+#### Notes ####
+
+Evaluate possibility of interoperability with the Shogun-Toolbox PGM Features, such as mentioned [here](http://www.shogun-toolbox.org/static/notebook/current/FGM.html)
