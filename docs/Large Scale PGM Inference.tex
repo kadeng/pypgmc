@@ -1,240 +1,4 @@
-
-
-
-% Header, overrides base
-
-    % Make sure that the sphinx doc style knows who it inherits from.
-    \def\sphinxdocclass{article}
-
-    % Declare the document class
-    \documentclass[letterpaper,10pt,english]{/home/londenberg/python-env/clean/lib/python2.7/site-packages/sphinx/texinputs/sphinxhowto}
-
-    % Imports
-    \usepackage[utf8]{inputenc}
-    \DeclareUnicodeCharacter{00A0}{\\nobreakspace}
-    \usepackage[T1]{fontenc}
-    \usepackage{babel}
-    \usepackage{times}
-    \usepackage{import}
-    \usepackage[Bjarne]{/home/londenberg/python-env/clean/lib/python2.7/site-packages/sphinx/texinputs/fncychap}
-    \usepackage{longtable}
-    \usepackage{/home/londenberg/python-env/clean/lib/python2.7/site-packages/sphinx/texinputs/sphinx}
-    \usepackage{multirow}
-
-    \usepackage{amsmath}
-    \usepackage{amssymb}
-    \usepackage{ucs}
-    \usepackage{enumerate}
-
-    % Used to make the Input/Output rules follow around the contents.
-    \usepackage{needspace}
-
-    % Pygments requirements
-    \usepackage{fancyvrb}
-    \usepackage{color}
-    % ansi colors additions
-    \definecolor{darkgreen}{rgb}{.12,.54,.11}
-    \definecolor{lightgray}{gray}{.95}
-    \definecolor{brown}{rgb}{0.54,0.27,0.07}
-    \definecolor{purple}{rgb}{0.5,0.0,0.5}
-    \definecolor{darkgray}{gray}{0.25}
-    \definecolor{lightred}{rgb}{1.0,0.39,0.28}
-    \definecolor{lightgreen}{rgb}{0.48,0.99,0.0}
-    \definecolor{lightblue}{rgb}{0.53,0.81,0.92}
-    \definecolor{lightpurple}{rgb}{0.87,0.63,0.87}
-    \definecolor{lightcyan}{rgb}{0.5,1.0,0.83}
-
-    % Needed to box output/input
-    \usepackage{tikz}
-        \usetikzlibrary{calc,arrows,shadows}
-    \usepackage[framemethod=tikz]{mdframed}
-
-    \usepackage{alltt}
-
-    % Used to load and display graphics
-    \usepackage{graphicx}
-    \graphicspath{ {figs/} }
-    \usepackage[Export]{adjustbox} % To resize
-
-    % used so that images for notebooks which have spaces in the name can still be included
-    \usepackage{grffile}
-
-
-    % For formatting output while also word wrapping.
-    \usepackage{listings}
-    \lstset{breaklines=true}
-    \lstset{basicstyle=\small\ttfamily}
-    \def\smaller{\fontsize{9.5pt}{9.5pt}\selectfont}
-
-    %Pygments definitions
-    
-\makeatletter
-\def\PY@reset{\let\PY@it=\relax \let\PY@bf=\relax%
-    \let\PY@ul=\relax \let\PY@tc=\relax%
-    \let\PY@bc=\relax \let\PY@ff=\relax}
-\def\PY@tok#1{\csname PY@tok@#1\endcsname}
-\def\PY@toks#1+{\ifx\relax#1\empty\else%
-    \PY@tok{#1}\expandafter\PY@toks\fi}
-\def\PY@do#1{\PY@bc{\PY@tc{\PY@ul{%
-    \PY@it{\PY@bf{\PY@ff{#1}}}}}}}
-\def\PY#1#2{\PY@reset\PY@toks#1+\relax+\PY@do{#2}}
-
-\expandafter\def\csname PY@tok@gd\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.63,0.00,0.00}{##1}}}
-\expandafter\def\csname PY@tok@gu\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.50,0.00,0.50}{##1}}}
-\expandafter\def\csname PY@tok@gt\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.27,0.87}{##1}}}
-\expandafter\def\csname PY@tok@gs\endcsname{\let\PY@bf=\textbf}
-\expandafter\def\csname PY@tok@gr\endcsname{\def\PY@tc##1{\textcolor[rgb]{1.00,0.00,0.00}{##1}}}
-\expandafter\def\csname PY@tok@cm\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
-\expandafter\def\csname PY@tok@vg\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
-\expandafter\def\csname PY@tok@m\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@mh\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@go\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.53,0.53,0.53}{##1}}}
-\expandafter\def\csname PY@tok@ge\endcsname{\let\PY@it=\textit}
-\expandafter\def\csname PY@tok@vc\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
-\expandafter\def\csname PY@tok@il\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@cs\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
-\expandafter\def\csname PY@tok@cp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.74,0.48,0.00}{##1}}}
-\expandafter\def\csname PY@tok@gi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.63,0.00}{##1}}}
-\expandafter\def\csname PY@tok@gh\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,0.50}{##1}}}
-\expandafter\def\csname PY@tok@ni\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.60,0.60,0.60}{##1}}}
-\expandafter\def\csname PY@tok@nl\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.63,0.63,0.00}{##1}}}
-\expandafter\def\csname PY@tok@nn\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
-\expandafter\def\csname PY@tok@no\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.53,0.00,0.00}{##1}}}
-\expandafter\def\csname PY@tok@na\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.49,0.56,0.16}{##1}}}
-\expandafter\def\csname PY@tok@nb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@nc\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
-\expandafter\def\csname PY@tok@nd\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.67,0.13,1.00}{##1}}}
-\expandafter\def\csname PY@tok@ne\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.82,0.25,0.23}{##1}}}
-\expandafter\def\csname PY@tok@nf\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
-\expandafter\def\csname PY@tok@si\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.53}{##1}}}
-\expandafter\def\csname PY@tok@s2\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-\expandafter\def\csname PY@tok@vi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
-\expandafter\def\csname PY@tok@nt\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@nv\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
-\expandafter\def\csname PY@tok@s1\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-\expandafter\def\csname PY@tok@sh\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-\expandafter\def\csname PY@tok@sc\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-\expandafter\def\csname PY@tok@sx\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@bp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@c1\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
-\expandafter\def\csname PY@tok@kc\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@c\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
-\expandafter\def\csname PY@tok@mf\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@err\endcsname{\def\PY@bc##1{\setlength{\fboxsep}{0pt}\fcolorbox[rgb]{1.00,0.00,0.00}{1,1,1}{\strut ##1}}}
-\expandafter\def\csname PY@tok@kd\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@ss\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
-\expandafter\def\csname PY@tok@sr\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.53}{##1}}}
-\expandafter\def\csname PY@tok@mo\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@kn\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@mi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@gp\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,0.50}{##1}}}
-\expandafter\def\csname PY@tok@o\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
-\expandafter\def\csname PY@tok@kr\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@s\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-\expandafter\def\csname PY@tok@kp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@w\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.73,0.73}{##1}}}
-\expandafter\def\csname PY@tok@kt\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.69,0.00,0.25}{##1}}}
-\expandafter\def\csname PY@tok@ow\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.67,0.13,1.00}{##1}}}
-\expandafter\def\csname PY@tok@sb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-\expandafter\def\csname PY@tok@k\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
-\expandafter\def\csname PY@tok@se\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.13}{##1}}}
-\expandafter\def\csname PY@tok@sd\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
-
-\def\PYZbs{\char`\\}
-\def\PYZus{\char`\_}
-\def\PYZob{\char`\{}
-\def\PYZcb{\char`\}}
-\def\PYZca{\char`\^}
-\def\PYZam{\char`\&}
-\def\PYZlt{\char`\<}
-\def\PYZgt{\char`\>}
-\def\PYZsh{\char`\#}
-\def\PYZpc{\char`\%}
-\def\PYZdl{\char`\$}
-\def\PYZhy{\char`\-}
-\def\PYZsq{\char`\'}
-\def\PYZdq{\char`\"}
-\def\PYZti{\char`\~}
-% for compatibility with earlier versions
-\def\PYZat{@}
-\def\PYZlb{[}
-\def\PYZrb{]}
-\makeatother
-
-
-    %Set pygments styles if needed...
-    
-        \definecolor{nbframe-border}{rgb}{0.867,0.867,0.867}
-        \definecolor{nbframe-bg}{rgb}{0.969,0.969,0.969}
-        \definecolor{nbframe-in-prompt}{rgb}{0.0,0.0,0.502}
-        \definecolor{nbframe-out-prompt}{rgb}{0.545,0.0,0.0}
-
-        \newenvironment{ColorVerbatim}
-        {\begin{mdframed}[%
-            roundcorner=1.0pt, %
-            backgroundcolor=nbframe-bg, %
-            userdefinedwidth=1\linewidth, %
-            leftmargin=0.1\linewidth, %
-            innerleftmargin=0pt, %
-            innerrightmargin=0pt, %
-            linecolor=nbframe-border, %
-            linewidth=1pt, %
-            usetwoside=false, %
-            everyline=true, %
-            innerlinewidth=3pt, %
-            innerlinecolor=nbframe-bg, %
-            middlelinewidth=1pt, %
-            middlelinecolor=nbframe-bg, %
-            outerlinewidth=0.5pt, %
-            outerlinecolor=nbframe-border, %
-            needspace=0pt
-        ]}
-        {\end{mdframed}}
-        
-        \newenvironment{InvisibleVerbatim}
-        {\begin{mdframed}[leftmargin=0.1\linewidth,innerleftmargin=3pt,innerrightmargin=3pt, userdefinedwidth=1\linewidth, linewidth=0pt, linecolor=white, usetwoside=false]}
-        {\end{mdframed}}
-
-        \renewenvironment{Verbatim}[1][\unskip]
-        {\begin{alltt}\smaller}
-        {\end{alltt}}
-    
-
-    % Help prevent overflowing lines due to urls and other hard-to-break 
-    % entities.  This doesn't catch everything...
-    \sloppy
-
-    % Document level variables
-    \title{Large Scale PGM Inference}
-    \date{June 7, 2014}
-    \release{}
-    \author{Unknown Author}
-    \renewcommand{\releasename}{}
-
-    % TODO: Add option for the user to specify a logo for his/her export.
-    \newcommand{\sphinxlogo}{}
-
-    % Make the index page of the document.
-    \makeindex
-
-    % Import sphinx document type specifics.
-     
-
-
-% Body
-
-    % Start of the document
-    \begin{document}
-
-        
-            \maketitle
-        
-
-        
-
-
-        
-        \subsubsection{Scalable Nonparametric Directed Graphical Model Inference
+\subsubsection{Scalable Nonparametric Directed Graphical Model Inference
 and Learning}
 
 Author: Kai Londenberg (Kai.Londenberg@gmail.com), June 2014
@@ -280,7 +44,9 @@ side-project \href{https://github.com/kadeng/pypgmc}{PyPGMc} to support
 the algorithms mentioned in this article.
 
 So this article is both an overview, and sort of a collection of ideas
-and roadmap items.\paragraph{Introduction to Directed Graphical Models}
+and roadmap items.
+
+\paragraph{Introduction to Directed Graphical Models}
 
 Directed Probabilistic Graphical Models (DGMs) provide a flexible and
 powerful framework for probabilistic reasoning. In all generality, they
@@ -288,27 +54,32 @@ are a way to efficiently represent complex probability distributions in
 high dimensional spaces by factorizing the joint distribution into
 conditional distributions.
 
-Given a set of random variables $x_i \sim X_i$ and their joint random
-vector $x \sim X$ with $x = \{ x_1, \ldots, x_N \}$ we represent their
-joint distribution as the product of a set of conditional distributions
+Given a set of random variables \$ x\_i \sim X\_i \$ and their joint
+random vector \$ x \sim X \$ with \$ x = \{ x\_1, \ldots, x\_N \} \$ we
+represent their joint distribution as the product of a set of
+conditional distributions
 
 \[
-P(X) = \prod_i^N P_i(X_i|{pa}(X_i) 
+P(X) = \prod_i^N P_i(X_i|{pa}(X_i)
 \]
 
-Where $pa(X_i)$ is the set of parents of variable $X_i$ in a directed
-graph $G$, where each vertex in the graph represents one of the random
-variables.Each vertex in this graph could assign an arbitrary probability
+Where \$ pa(X\_i) \$ is the set of parents of variable \$ X\_i \$ in a
+directed graph \$ G \$, where each vertex in the graph represents one of
+the random variables.
+
+Each vertex in this graph could assign an arbitrary probability
 distribution to it's random variables. But this probability distribution
 may only depend on the parents of the variable in the graph.
 
 Such a representation has many advantages, even to list them completely
 would be out of the scope of this article. An excellent overview is
 present in the book
-\href{http://mitpress.mit.edu/books/probabilistic-graphical-models}{Probabilistic
+\href{http://mitpress.mit.edu/books/probabilistic-\%20graphical-models}{Probabilistic
 Graphical Models} by Daphne Koller, who also offers a
 \href{https://www.coursera.org/course/pgm}{Coursera course} by the same
-name, which is highly recommended.\paragraph{D-Separation / Conditional Independence}
+name, which is highly recommended.
+
+\paragraph{D-Separation / Conditional Independence}
 
 Most importantly, the graph encodes information about (conditional)
 independencies among the variables. By a property called D-Separation
@@ -322,7 +93,9 @@ If the conditional dependencies that hold over a joint probability
 distribution are a subset of the conditional independence assumptions
 made by the graph, this distribution is compatible to the graph in the
 sense that the distribution can be faithfully represented by a
-factorization of the distribution along that graph.\paragraph{Causal Models}
+factorization of the distribution along that graph.
+
+\paragraph{Causal Models}
 
 A very common form of these models is to restrict parent / child
 relationships to cause/effect pairs. Furthermore, the network must be
@@ -333,7 +106,7 @@ While it is not neccessary for the machinery of DGMs to work that they
 are causal models, this can, under certain circumstances, be used to
 perform so called causal inference or causal reasoning using DGMs. More
 on that can be found in Judea Pearl's excellent book on
-\href{http://bayes.cs.ucla.edu/BOOK-2K/}{Causality}.
+\href{http://bayes.cs.ucla.edu\%20/BOOK-2K/}{Causality}.
 
 One important rule to note is, that in order to perform causal inference
 in such a causal network, i.e.~to estimate the impact of an explicit
@@ -342,14 +115,16 @@ certain value (in contrast to observing it having that value) it is
 neccessary to sever all ties from the parents of said variable to it
 (since they are no longer causally connected). Furthermore, the network
 
-In Pearl's see/do calculus, he discerns between $P(x|y)$ ( probability
-of x given that I \emph{see} $y$ ) and $P(x|do(y))$ ( probability of x
-given that I \emph{do} x).
+In Pearl's see/do calculus, he discerns between \$ P(x\textbar{}y) \$ (
+probability of x given that I \emph{see} $y$ ) and \$
+P(x\textbar{}do(y)) \$ ( probability of x given that I \emph{do} x).
 
 While not of further concern here, Pearl provides a great deal of
 informal insights and formal rules into when and how observations can be
 converted into causal claims, how to transfer the results of studies
-from one setting to another.\paragraph{Common types of DGMs}
+from one setting to another.
+
+\paragraph{Common types of DGMs}
 
 Some common types of DGMs that you might have heard about include:
 
@@ -375,14 +150,18 @@ among them:
   Dynamic Bayesian Networks (DBNs)
 \end{itemize}
 Many of these models have their own set of specialized inference and
-learning algorithms, their own set of advantages and disadvantages.\paragraph{Inference / Reasoning in Graphical Models}
+learning algorithms, their own set of advantages and disadvantages.
+
+\paragraph{Inference / Reasoning in Graphical Models}
 
 Generally speaking, we can use these graphical models to reason about
 the marginal probability distributions, most likely configurations (MLE
 / MAP configurations) etc. of variables of interest \textbf{given
 evidence}. This in turn can be used in many applications, from decision
 support (making decisions under uncertainty) and as a key component for
-supervised, unsupervised and semi-supervised learning.\paragraph{Parametric VS Nonparametric representations}
+supervised, unsupervised and semi- supervised learning.
+
+\paragraph{Parametric VS Nonparametric representations}
 
 If we can restrict our probability distributions to come from specifiy
 families of distributions, inference can be made very efficient in some
@@ -390,9 +169,13 @@ cases. But if you want to have a general model which can capture any
 kind of weird multi-modal and non-continous distributions, you are
 limited to very slow inference using MCMC methods. Also, the scalability
 in these cases is very limited, because most MCMC algorithms are not
-made to be distributed.\textbar{} Family \textbar{} Advantages \textbar{} Disadvantages
+made to be distributed.
+
+\textbar{} Family \textbar{} Advantages \textbar{} Disadvantages
 \textbar{}
-\textbar{}------------------------------------------\textbar{}----------------\textbar{}--------------------------------------------------------------------------------------------------------------------------------------------------------------------------\textbar{}
+\textbar{}------------------------------------------\textbar{}----------------\textbar{}-------------------
+--------------------------------------------------------------------------------
+-----------------------------------------------------------------------\textbar{}
 \textbar{} Conditional Linear Gaussian (CLG) \textbar{} Very Fast
 \textbar{} Are your distributions linear combinations of gaussians ?
 \textbar{} \textbar{} Discrete (Categorical) \textbar{} Fast \textbar{}
@@ -402,7 +185,9 @@ becomes intractable in these cases. \textbar{} \textbar{} Generic
 (arbitrary functions of parents) \textbar{} Most Flexible \textbar{}
 Very slow inference (MCMC) or strongly biased approximate inference,
 hard to determine convergence / mixing. Usually intractable in high
-dimensions. \textbar{}\paragraph{Hierarchical Bayesian Models and MCMC}
+dimensions. \textbar{}
+
+\paragraph{Hierarchical Bayesian Models and MCMC}
 
 In Bayesian Hierarchical Modeling, we are usually either interested in
 estimating marginals of certain model parameters in order to gain
@@ -425,7 +210,9 @@ applied to solve high dimensional problems such as large scale matrix
 factorization for recommender systems.
 
 MCMC, while an approximate approach, is asymptotically exact if applied
-correctly.\paragraph{Message Passing Algorithms}
+correctly.
+
+\paragraph{Message Passing Algorithms}
 
 Among the most efficient algorithms for exact and approximate inference
 in discrete and conditional linear gaussian DGMs are so called Message
@@ -459,7 +246,9 @@ the same.
 Again, I refer to the book
 \href{http://mitpress.mit.edu/books/probabilistic-graphical-models}{Probabilistic
 Graphical Models} by Daphne Koller and her
-\href{https://www.coursera.org/course/pgm}{Coursera course} for details.\paragraph{Nonparametric and Particle Belief Propagation / Message
+\href{https://www.coursera.org/course/pgm}{Coursera course} for details.
+
+\paragraph{Nonparametric and Particle Belief Propagation / Message
 Passing}
 
 As Dauwels et al. have pointed out in the Paper
@@ -495,23 +284,24 @@ approaches that might be taken:
   \href{http://ssg.mit.edu/nbp/papers/nips03.pdf}{Ihler, Sudderth et al:
   Efficient Multiscale Sampling from Products of Gaussian Mixtures}
 \item
-  \href{http://machinelearning.wustl.edu/mlpapers/paper\_files/AISTATS09\_IhlerM.pdf}{Ihler,
+  \href{http://machinelearning.wus\%20tl.edu/mlpapers/paper\_files/AISTATS09\_IhlerM.pdf}{Ihler,
   Mc. Allister: Particle Belief Propagation}
 \item
   \href{http://robotics.stanford.edu/~koller/Papers/Koller+al:UAI99.pdf}{Koller
   et al: A General Algorithm for Approximate Inference and Its
   Application to Hybrid Bayes Nets}
-\end{itemize}\subparagraph{The Message Fusion Problem}
+\end{itemize}
+\subparagraph{The Message Fusion Problem}
 
 All of the above papers identify a single performance bottleneck in
 these algorithms.
 
-If we have two factors which share at least one continuous variable $x$
-with a smoot pdf, the probability that two factors will independently
+If we have two factors which share at least one continuous variable \$ x
+\$ with a smoot pdf, the probability that two factors will independently
 choose the same value for that variable is essentially zero.
 
-So if we have two factors represented using discrete particle lists
-$\phi(x)$ and $\theta(x)$, their product will be zero with near
+So if we have two factors represented using discrete particle lists \$
+\phi(x) \$ and \$ \theta(x) \$, their product will be zero with near
 certainty everywhere.
 
 What we need to do is to perform so called \textbf{Message Fusion}, for
@@ -532,10 +322,12 @@ But a problem remains: It's computationally expensive to evaluate the
 probability density and curvature (Jacobian and Hessian) of these
 messages. And that might be important if we would like to sample from a
 product of such a mixture density message with the probability density
-function of a factor.\paragraph{Particle Belief Propagation Approach}
+function of a factor.
+
+\paragraph{Particle Belief Propagation Approach}
 
 In
-\href{http://machinelearning.wustl.edu/mlpapers/paper\_files/AISTATS09\_IhlerM.pdf}{Ihler,
+\href{http://machinelearning.wus\%20tl.edu/mlpapers/paper\_files/AISTATS09\_IhlerM.pdf}{Ihler,
 Mc. Allister: Particle Belief Propagation} it has been proposed to
 sample from the particles in the messages themselves. This is similar to
 what happens in \textbf{Particle Filters}. While potentially a good
@@ -572,11 +364,13 @@ you usually need a human expert who decides if the numbers of samples
 have been sufficient, if all relevant states have been visited etc. But
 even then, that person can never be sure. Much the less, if the problem
 gets high-dimensional. Having a clear convergence diagnostic opens the
-door for novel applications in large scale risk analysis.\paragraph{Compact Message Density Estimation for Message Fusion}
+door for novel applications in large scale risk analysis.
+
+\paragraph{Compact Message Density Estimation for Message Fusion}
 
 Another approach, which has also been taken or at least proposed by
 several researchers ( see
-\href{http://machinelearning.wustl.edu/mlpapers/paper\_files/AISTATS09\_IhlerM.pdf}{Ihler,
+\href{http://mach\%20inelearning.wustl.edu/mlpapers/paper\_files/AISTATS09\_IhlerM.pdf}{Ihler,
 Mc. Allister: Particle Belief Propagation} for an overview) is to try to
 estimate message densities using some form of nonparametric density
 estimation technique which both smoothes the distribution, and
@@ -616,12 +410,14 @@ Process}, a more flexible two-parameter generalization of the Dirichlet
 Process which allows for Power-Law (fat) tails.
 
 There are a lot of ready-made implementations of these (except for the
-Pitman-Yor Process Clustering), see
-\href{http://scikit-learn.org/stable/modules/mixture.html}{Scikit-Learn
+Pitman- Yor Process Clustering), see
+\href{http\%20://scikit-learn.org/stable/modules/mixture.html}{Scikit-Learn
 Documentation: Mixtures}
 
 Another (novel) approach is the following, which might be more efficient
-if the Particle Lists are created using MCMC Sampling.\paragraph{Embarassingly Parallel MCMC}
+if the Particle Lists are created using MCMC Sampling.
+
+\paragraph{Embarassingly Parallel MCMC}
 
 In a recent paper (
 \href{http://arxiv.org/pdf/1311.4780v1.pdf}{Neiswanger et al:
@@ -629,7 +425,9 @@ Embarassingly Parallel MCMC} ) an asymptotically exact algorithm for
 performing embarassingly parallel distributed MCMC was presented.
 Interestingly, the main problem solved in that paper is almost exactly
 the Message Fusion problem stated above. So by solving one problem, we
-get to solve inference for both high-dimensional and big-data problems.\paragraph{Density Mapping (DRAFT)}
+get to solve inference for both high-dimensional and big-data problems.
+
+\paragraph{Density Mapping (DRAFT)}
 
 The core idea for Density Mapping is to combine MCMC, Gradient Ascent or
 EM and Kernel Density Estimation (KDE) into a single, more efficient
@@ -643,35 +441,38 @@ This way, the probability density gets simultaneously \emph{mapped out},
 ensuring that the MCMC chain spends it's computational time efficiently
 by mapping so far uncovered regions of the probability space.
 
-Let $f^*: \mathbb{R}^D \mapsto \mathbb{R}$ be our unnormalized posterior
-density function which we can evaluate at any point. The corresponding
-normalized density is $P^*$ with $P^*(x) = \frac{1}{Z} f^*(x)$ and
-$x \in \mathbb{R}^D$, with $Z$ being the normalization constant, i.e.
-$Z = \int{f^*(x) dx}$
+Let \$ f\^{}\emph{: \mathbb{R}\^{}D \mapsto \mathbb{R} \$ be our
+unnormalized posterior density function which we can evaluate at any
+point. The corresponding normalized density is \$ P\^{}} \$ with \$
+P\^{}\emph{(x) = \frac{1}{Z} f\^{}}(x) \$ and \$ x \in
+\mathbb{R}\^{}D \$, with \$ Z \$ being the normalization constant, i.e.
+\$ Z = \int{f^*(x) dx} \$
 
-We assume that we can consistently estimate the density $P^*$ (usually a
-posterior) using a suitable Markov Chain Monte Carlo algorithm such as a
-Metropolis Hastings sampler given the unnormalized density function
-$f^*(x)$Now let us assume we have a kernel probability density estimate which
+We assume that we can consistently estimate the density \$ P\^{}* \$
+(usually a posterior) using a suitable Markov Chain Monte Carlo
+algorithm such as a Metropolis Hastings sampler given the unnormalized
+density function \$ f\^{}*(x) \$
+
+Now let us assume we have a kernel probability density estimate which
 has been estimated step by step from N point probability masses:
 
-\[ 
+\[
 P^{E}(x) = \frac{1}{H} \sum_{i=1}^{N} \gamma_i \cdot K_i(x)
 \]
 
-Where $H = \sum{\gamma_i}$ and each $K_i$ is itself a properly
-normalized density function (Kernel) with a single mode
-$k_i = {argmax}_{x} K_i(x)$ with $k_i \in \mathbb{R}^D$. We define the
-unnormalized kernel density at time step N as
+Where \$ H = \sum{\gamma_i} \$ and each \$ K\_i \$ is itself a properly
+normalized density function (Kernel) with a single mode \$k\_i =
+\{argmax\}\_\{x\} K\_i(x) \$ with \$ k\_i \in \mathbb{R}\^{}D \$. We
+define the unnormalized kernel density at time step N as
 
 \[
 f_N^E(x) =  \sum_{i=1}^{N} \frac{f_i^E(k_i)}{K_i(k_i)} \cdot K_i(x)
 \]
 
-with $f_0^E(x) = f^*(x)$. Correspondingly, we define
-$\gamma_i = \frac{f^*(k_i)}{f_i^E(k_i)}$ which ensures that
-$f_N^E(x) = P^{E}(x) = f^*(x)$ for all points
-$x \in \{ k_1, \ldots, k_N \}$.
+with \$ f\_0\^{}E(x) = f\^{}\emph{(x) \$. Correspondingly, we define \$
+\gamma\_i = \frac{f^*(k_i)}{f_i^E(k_i)} \$ which ensures that \$
+f\_N\^{}E(x) = P\^{}\{E\}(x) = f\^{}}(x) \$ for all points \$ x \in \{
+k\_1, \ldots, k\_N \} \$.
 
 We define the \textbf{Unnormalized Sampling Function} as:
 
@@ -679,72 +480,69 @@ We define the \textbf{Unnormalized Sampling Function} as:
 f^F(x) = min(max(f^*(x)-f^E(x), f^*(x)^\frac{1}{s}), f^*(x))
 \]
 
-With $s > 1$ being a cooling factor which flattens the original
-distribution. Plausible initial values for s might be in the range from
-2 to 100 depending on how flat we would like the distribution to become.
+With \$ s \textgreater{} 1 \$ being a cooling factor which flattens the
+original distribution. Plausible initial values for s might be in the
+range from 2 to 100 depending on how flat we would like the distribution
+to become.
 
-If we chose the density estimation Kernels $K_i$ such that they (at
-least approximately) have limited support around their mode or mean
-$x_i$, this Sampling Function can be calculated (or approximated)
+If we chose the density estimation Kernels \$ K\_i \$ such that they (at
+least approximately) have limited support around their mode or mean \$
+x\_i \$, this Sampling Function can be calculated (or approximated)
 quickly, even if N (the number of kernels in the density estimate) is
 large, by just taking the nearest kernels to a given point into account.
 Such a lookup can be made efficient using \textbf{KD-Trees} or
-\textbf{Cover-Trees} to be performed in $O(D \cdot \log(N))$ time, with
-$N$ being the number of components, and $D$ being the dimensionality of
-the points.
+\textbf{Cover-Trees} to be performed in \$ O(D \cdot \log(N)) \$ time,
+with \$ N \$ being the number of components, and \$ D \$ being the
+dimensionality of the points.
 
 During or after MCMC sampling, we should check for each sample whether
-$f^*(x)-f^E(x)$ becomes negative at that point. This would indicate
-regions where we over-estimate the density. In such a case, it should be
-possible to shrink the variance of the responsible component of
-f\^{}E(x) in that direction. Since this is computationally intensive (we
-have to re-compute all mixture components), this should be prevented by
-scaling down the variance of the kernel components in directions of high
-variance.\paragraph{Density Mapping Algorithm (DRAFT)}
+\$ f\textsuperscript{*(x)-f}E(x) \$ becomes negative at that point. This
+would indicate regions where we over-estimate the density. In such a
+case, it should be possible to shrink the variance of the responsible
+component of f\^{}E(x) in that direction. Since this is computationally
+intensive (we have to re-compute all mixture components), this should be
+prevented by scaling down the variance of the kernel components in
+directions of high variance.
 
-Now, after initializing s to a sensible value, and starting with $f^E=0$
-(constant), the density estimation procedure works like this:
+\paragraph{Density Mapping Algorithm (DRAFT)}
+
+Now, after initializing s to a sensible value, and starting with \$
+f\^{}E=0\$ (constant), the density estimation procedure works like this:
 
 \begin{enumerate}[1.]
 \item
-  Run MCMC to collect a number of samples from $f^F$ . Discard burn-in
-  samples.
+  Run MCMC to collect a number of samples from \$ f\^{}F \$ . Discard
+  burn-in samples.
 \item
   Check all sampled points for values with negative
   f\textsuperscript{*(x)-f}E(x). Shrink the variance of responsible
-  components of $f^E$.
+  components of \$ f\^{}E \$.
 \item
   Pick a random sample, and perform gradient ascent or EM to find a
-  local optimum/mode of $f^F$: called $k_i$
+  local optimum/mode of \$ f\^{}F \$: called \$ k\_i \$
 \item
-  Check if this is a new local optimum. If not: Increase $s$ and
+  Check if this is a new local optimum. If not: Increase \$ s \$ and
   continue at 1.)
 \item
-  Create a Kernel density estimate $K_i$ around local optimum $k_i$ (use
-  the Hamiltonian of $f^*$ at $k_i$ as a scale/precision matrix, apply
-  sensible regularization)
+  Create a Kernel density estimate \$ K\_i \$ around local optimum \$
+  k\_i \$ (use the Hamiltonian of \$ f\^{}* \$ at \$ k\_i \$ as a
+  scale/precision matrix, apply sensible regularization)
 \item
-  (Optional): Add $k_i$ to a KD-Tree index to speed up nearest-neighbour
-  lookups
+  (Optional): Add \$ k\_i \$ to a KD-Tree index to speed up
+  nearest-neighbour lookups
 \item
-  Update $f^E$ and $f^F$ using the new kernel estimate $K_i$
+  Update \$ f\^{}E \$ and \$ f\^{}F \$ using the new kernel estimate \$
+  K\_i \$
 \item
   Stopping criterion: Has the density been flattened enough ? Then stop.
 \item
   otherwise go to 3.) or 1.)
 \end{enumerate}
 The result (so I hope) is a rather good density estimate. This algorithm
-has yet to be tried in practice.\subparagraph{Conclusions}
+has yet to be tried in practice.
+
+\subparagraph{Conclusions}
 
 It seems like everything is ready to build a generic framework for large
 scale inference in directed probabilistic graphical models. Someone just
-has to do it ..
-        
-
-        \renewcommand{\indexname}{Index}
-        \printindex
-
-    % End of document
-    \end{document}
-
-
+has to do it.
