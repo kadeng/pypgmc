@@ -22,6 +22,10 @@ Copyright: Kai Londenberg ( Kai.Londenberg@googlemail.com ) 2014
 If you consider this interesting, you may contact me via email me or via LinkedIn:
 [Kai Londenberg's LinkedIn Profile](http://de.linkedin.com/in/kailondenberg)
 
+## Vision
+
+Take a look at the following IPython Notebook (also in this repo), which describes a bit (and points to more) of the ideas which led to this project. [Scalable Nonparametric Directed Graphical Model Inference and Learning](http://nbviewer.ipython.org/github/kadeng/pypgmc/blob/master/docs/Large%20Scale%20PGM%20Inference.ipynb)
+
 ## Roadmap
 
 The most important next steps are:
